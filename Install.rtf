@@ -3,13 +3,14 @@ Add the 2 files(Grumboz_Guild_Warz.cpp and Grumboz_Guild_Warz.h) to the \src\ser
 ------------------------------------------
 \src\server\scripts\Custom
 CMakeLists.txt
-
+[CODE]
 Custom/Grumboz_Guild_Warz.cpp
+[/CODE]
 
 ------------------------------------------
 
 \src\server\game\Scripting\ScriptLoader.cpp
-
+[CODE]
 #ifdef SCRIPTS
 /* This is where custom scripts' loading functions should be declared. */
 	void AddSC_Grunboz_Guild_Warz();
@@ -22,12 +23,13 @@ void AddCustomScripts()
 	AddSC_Grunboz_Guild_Warz();
 #endif
 }
-
+[/CODE]
 
 ------------------------------------------
 ------------------------------------------
 src\server\worldserver\worldserver.conf
 Add this to your worldserver.conf file:
+[CODE]
 ###################################################################################################
 # Grumbo'z Guild Warz
 #
@@ -83,3 +85,4 @@ GUILD_WARZ.RANKING_TIMER = 10
 GUILD_WARZ.RANK_MAX = 100
 #
 #####################################################################################################################
+[/CODE]
