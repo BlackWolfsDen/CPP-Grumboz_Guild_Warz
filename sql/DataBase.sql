@@ -9,9 +9,11 @@
 CREATE DATABASE IF NOT EXISTS `guild_warz_335` /*!40100 DEFAULT CHARACTER SET utf8 */;
 USE `guild_warz_335`;
 
+DROP TABLE IF EXISTS `commands`;
+
 CREATE TABLE IF NOT EXISTS `commands` (
   `guild` varchar(50) NOT NULL DEFAULT '' COMMENT 'Do Not Touch',
-  `guild_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'guild id',
+  `guild_id` mediumint(8) unsigned DEFAULT NULL COMMENT 'guild id',
   `team` tinyint(1) unsigned NOT NULL COMMENT 'guild team id',
   `commands` varchar(10) NOT NULL DEFAULT 'commands',
   `info_loc` varchar(10) NOT NULL DEFAULT 'info',
@@ -38,7 +40,7 @@ CREATE TABLE IF NOT EXISTS `commands` (
   `guild_invite` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT 'guild invite system. 0 == off :: 1 == on',
   `loc` varchar(15) NOT NULL DEFAULT 'area',
   `loc_cost` smallint(5) unsigned NOT NULL DEFAULT '10' COMMENT 'price for basic empty zone.',
-  `flag_id` bigint(20) unsigned NOT NULL DEFAULT '500010' COMMENT 'Do Not Touch',
+  `flag_id` bigint(20) unsigned NOT NULL DEFAULT '187432' COMMENT 'Do Not Touch',
   `farm` varchar(15) NOT NULL DEFAULT 'farm',
   `farm_cost` smallint(5) unsigned NOT NULL DEFAULT '5' COMMENT 'price for small cheezy government issued house.',
   `farm_L` smallint(5) unsigned NOT NULL DEFAULT '1' COMMENT 'how many farms per location.',
@@ -84,7 +86,7 @@ CREATE TABLE IF NOT EXISTS `commands` (
   `mailbox_L` smallint(5) unsigned NOT NULL DEFAULT '1',
   `mailbox_id` bigint(20) unsigned NOT NULL DEFAULT '500010' COMMENT 'Do Not Touch',
   `setup` varchar(10) DEFAULT 'setup' COMMENT 'player command that gives info about how its setup.',
-	`allowed` smallint(1) unsigned NOT NULL DEFAULT '0',
+  `allowed` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT 'Guild allowed/not allowed development until quest complete',
   `color_1` varchar(10) DEFAULT '|cff00cc00' COMMENT 'Command color GREEN',
   `color_2` varchar(10) NOT NULL DEFAULT '|cffFFFF00' COMMENT 'Value color YELLOW',
   `color_3` varchar(10) NOT NULL DEFAULT '|cffFFFFFF' COMMENT 'Info color WHITE',
@@ -106,6 +108,8 @@ CREATE TABLE IF NOT EXISTS `commands` (
 REPLACE INTO `commands` (`guild`, `guild_id`, `team`, `commands`, `info_loc`, `list_loc`, `tele`, `version`, `GLD_lvlb`, `GLD_lvls`, `respawn_flag`, `details_loc`, `table`, `GM_admin`, `GM_minimum`, `currency`, `pig_payz`, `pig_payz_timer`, `gift_count`, `flag_require`, `Server`, `command_set`, `anarchy`, `f_timer`, `s_timer`, `guild_invite`, `loc`, `loc_cost`, `flag_id`, `farm`, `farm_cost`, `farm_L`, `farm_id`, `barrack`, `barrack_cost`, `barrack_L`, `barrack_id`, `hall`, `hall_cost`, `hall_L`, `hall_id`, `pig`, `pig_cost`, `pig_L`, `pig_id`, `guard`, `guard_cost`, `guard_L`, `guard_id`, `vendor1`, `vendor1_cost`, `vendor1_L`, `vendor1_id`, `vendor2`, `vendor2_cost`, `vendor2_L`, `vendor2_id`, `vendor3`, `vendor3_cost`, `vendor3_L`, `vendor3_id`, `cannon`, `cannon_cost`, `cannon_L`, `cannon_id`, `vault`, `vault_cost`, `vault_L`, `vault_id`, `mailbox`, `mailbox_cost`, `mailbox_L`, `mailbox_id`, `color_1`, `color_2`, `color_3`, `color_4`, `color_5`, `color_6`, `color_7`, `color_8`, `color_9`, `color_10`, `color_11`, `color_12`, `color_13`, `color_14`, `color_15`) VALUES
 	('SERVER', 0, 2, 'commands', 'info', 'list', 'gtele', 'ver', 0, 0, 'flag', 'loc', 'table', 5, 3, 62006, 100000, 1800000, 25, 0, 'SERVER', 'set', 1, 1, 10000, 0, 'area', 10, 500010, 'farm', 5, 3, 500000, 'barrack', 10, 1, 500002, 'hall', 100, 1, 500004, 'pig', 1, 5, 49000, 'guard', 1, 10, 49002, 'vendor1', 25, 1, 49004, 'vendor2', 25, 1, 49006, 'vendor3', 25, 1, 49008, 'cannon', 100, 3, 49010, 'vault', 100, 3, 500006, 'mailbox', 10, 3, 500008, '|cff00cc00', '|cffFFFF00', '|cffFFFFFF', '|cff3399FF', '|cffBA0000', '|cffFFFF00', '|cffFF0000', '|cffC0C0C0', '|cff000000', '|cff00cc00', '|cffFFFF00', '|cffFF0000', '|cffFFFFFF', '|cff00cc00', '|cffFF0000');
 
+
+DROP TABLE IF EXIST `help`;
 
 CREATE TABLE IF NOT EXISTS `help` (
   `entry` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,
@@ -224,6 +228,7 @@ REPLACE INTO `help` (`entry`, `name`, `description`, `example`, `command_level`)
 	(104, 'allowed', 'System adjustable setting for allowed/not alllowed to develop areas via quest.', 'LOCKED', '7');
 	
 
+DROP TABLE IF EXIST `ranking`;
 CREATE TABLE IF NOT EXISTS `ranking` (
   `guild_id` mediumint(8) unsigned NOT NULL,
   `team` mediumint(8) unsigned NOT NULL DEFAULT '0',
@@ -232,6 +237,7 @@ CREATE TABLE IF NOT EXISTS `ranking` (
   UNIQUE KEY `guild_id` (`guild_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+DROP TABLE IF EXIST `zones`;
 CREATE TABLE IF NOT EXISTS `zones` (
   `entry` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `map_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
@@ -262,10 +268,3 @@ CREATE TABLE IF NOT EXISTS `zones` (
 REPLACE INTO `zones` (`entry`, `map_id`, `area_id`, `zone_id`, `guild_name`, `team`, `x`, `y`, `z`, `farm_count`, `barrack_count`, `hall_count`, `pig_count`, `guard_count`, `vendor1_count`, `vendor2_count`, `vendor3_count`, `cannon_count`, `vault_count`, `mailbox_count`, `flag_id`, `fs_time`, `guild_id`) VALUES
 	(1, 0, 0, 0, 'SERVER', 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 	
-CREATE TABLE IF NOT EXISTS `ranking` (
-  `guild_id` mediumint(8) unsigned NOT NULL,
-  `team` mediumint(8) unsigned NOT NULL DEFAULT '0',
-  `total_gross_worth` mediumint(8) unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`guild_id`),
-  UNIQUE KEY `guild_id` (`guild_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
