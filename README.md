@@ -7,5 +7,7 @@ Support for:
 * TDB 335.62 
  
  
+ Select the proper branch for your rev when cloning. don't clone this branch , it is out dated and for display only.
+ 
  
 Original public release thread -> http://emudevs.com/showthread.php/5436-CPP-Grumbo-z-Guild-Warz-The-Rise-of-the-Guild
