@@ -3,7 +3,6 @@
 
 Support for:
 
-* TDB 335.60
 * TDB 335.62 
  
  
