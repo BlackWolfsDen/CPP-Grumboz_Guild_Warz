@@ -11,3 +11,5 @@ Support for:
  
  
 Original public release thread -> http://emudevs.com/showthread.php/5436-CPP-Grumbo-z-Guild-Warz-The-Rise-of-the-Guild
+
+The WiKi -> https://github.com/BlackWolfsDen/Eluna-Grumboz-Guild-Warz/wiki
