@@ -92,6 +92,7 @@ struct Commands
 	std::string color_13;
 	std::string color_14;
 	std::string color_15;
+	uint8 allowed;
 };
 
 struct Help
