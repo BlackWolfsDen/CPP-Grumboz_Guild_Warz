@@ -1,4 +1,4 @@
-/*
+﻿/*
 -- **g****************************************s***
 -- ********© Grumbo'z Guild Warz System™ ©********
 -- ********** Brought to you by Grumbo  *******l**
@@ -1684,7 +1684,7 @@ public: GGW_commands() : PlayerScript("GGW_commands"){ };
 
 	virtual void OnChat(Player* player, uint32 type, uint32 lang, std::string& msg, Guild* guild)
 	{
-		if (player->GetGuild() > 0)
+		if (player->GetGuildId() > 0)
 		{
 			Map* Pmap = player->GetMap();
 			uint32 map_id = player->GetMapId();
@@ -1701,7 +1701,7 @@ public: GGW_commands() : PlayerScript("GGW_commands"){ };
 			std::string pName = player->GetName();
 			uint32 pGuid = player->GetGUID();
 			auto pTeam_id = player->GetTeamId();
-			uint32 guild_id = guild->GetId();
+			uint32 guild_id = player->GetGuildId();
 			std::string guild_name = guild->GetName();
 			uint8 pGuildRank = player->GetRank();
 			uint8 pGMRank = player->GetSession()->GetSecurity();
@@ -1711,22 +1711,22 @@ public: GGW_commands() : PlayerScript("GGW_commands"){ };
 
 			uint32 LocId = GetLocationID(map_id, area_id, zone_id);
 
-			std::string str_LocId = ConvertNumberToString(LocId);
-
-			if (!pGMRank)
+			if (!LocId)
 			{
-				pGMRank = 0;
+				LocId = CreateGuildLocation(map_id, area_id, zone_id, pX, pY, pZ);
 			}
 
-			if (gGuildID != guild_id)
+			if (guild_name != GWCOMM[guild_id].guild)
 			{
 				ChatHandler(player->GetSession()).PSendSysMessage("<Grumbo>:CREATING Your Guild Warz Commands for Guild %s.", guild_name.c_str());
 				CreateGuildCommands(guild_name, guild_id);
 			}
 
-			if (!LocId)
+			std::string str_LocId = ConvertNumberToString(LocId);
+
+			if (!pGMRank)
 			{
-				LocId = CreateGuildLocation(map_id, area_id, zone_id, pX, pY, pZ);
+				pGMRank = 0;
 			}
 
 			if (GWARZ[LocId].x == 0 && GWARZ[LocId].y == 0 && GWARZ[LocId].z == 0) // just a temp catch-22.
@@ -3956,7 +3956,6 @@ public:
 			std::string pName = player->GetName();
 			uint8 pTeam_id = player->GetTeamId();
 			uint32 pGuid = player->GetGUID();
-
 			uint32 map_id = player->GetMapId();
 			uint32 area_id = player->GetAreaId();
 			uint32 zone_id = player->GetZoneId();
@@ -3966,6 +3965,11 @@ public:
 			float pO = player->GetOrientation();
 
 			uint32 LocId = GetLocationID(map_id, area_id, zone_id);
+
+				if (!LocId)
+				{
+					LocId = CreateGuildLocation(map_id, area_id, zone_id, pX, pY, pZ);
+				}
 
 			uint32 loc_guild_id = GWARZ[LocId].guild_id;
 			std::string loc_guild_name = GWARZ[LocId].guild_name;
@@ -4012,7 +4016,13 @@ public:
 					uint8 pGMRank = player->GetSession()->GetSecurity();
 					uint32 GuildLeaderGUID = guild->GetLeaderGUID();
 
-						if (GWCOMM[guild_id].allowed >= 1)
+					if (guild_name != GWCOMM[guild_id].guild)
+					{
+						ChatHandler(player->GetSession()).PSendSysMessage("<Grumbo>:CREATING Your Guild Warz Commands for Guild %s.", guild_name.c_str());
+						CreateGuildCommands(guild_name, guild_id);
+					}
+					
+					if (GWCOMM[guild_id].allowed >= 1)
 						{
 							if (guild_id == loc_guild_id || (GWCOMM[SERVER_GUILD_ID].anarchy == 0 && pTeam_id == GWARZ[LocId].team))
 							{
