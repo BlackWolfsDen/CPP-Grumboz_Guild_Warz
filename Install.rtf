@@ -1,1 +1,85 @@
-{\rtf1}
+Add the 2 files(Grumboz_Guild_Warz.cpp and Grumboz_Guild_Warz.h) to the \src\server\scripts\Custom\ folder.
+
+------------------------------------------
+\src\server\scripts\Custom
+CMakeLists.txt
+
+Custom/Grumboz_Guild_Warz.cpp
+
+------------------------------------------
+
+\src\server\game\Scripting\ScriptLoader.cpp
+
+#ifdef SCRIPTS
+/* This is where custom scripts' loading functions should be declared. */
+	void AddSC_Grunboz_Guild_Warz();
+#endif
+
+void AddCustomScripts()
+{
+#ifdef SCRIPTS
+    /* This is where custom scripts should be added. */
+	AddSC_Grunboz_Guild_Warz();
+#endif
+}
+
+
+------------------------------------------
+------------------------------------------
+src\server\worldserver\worldserver.conf
+Add this to your worldserver.conf file:
+###################################################################################################
+# Grumbo'z Guild Warz
+#
+# This setting allows multi-realm usage. you can have a db for each realm and a unique Guild Warz setup. 
+# 
+# 	GUILDWARZ.DB_ADDRESS
+#		Description: sql DB name. Used for multi-realm usage.
+#		Default: guild_warz_335
+
+GUILD_WARZ.DB_ADDRESS = "guild_warz_335"
+
+# This setting will adjust the Guild Pig's PigPayz payout. 
+# 
+# 	GUILDWARZ.PIGPAYZ_REWARD
+#		Description: in copper. how much each pig will payout to a GUild Member.
+#		             1 = 1 copper||99 = 99 copper||100 = 1 silver||9999 = 99 silver and 99 copper.
+#			     10000 = 1 gold||990000 = 99 gold||9999999 = 99 gold 99 silver 99 copper.
+#		Default: 100 // 1 silver per pig.
+
+GUILD_WARZ.PIGPAYZ_REWARD = 100
+
+# This setting will adjust the Guild Pig's PigPayz timer.
+# 
+# 	GUILDWARZ.PigPayz_timer
+#		Description: in minutes.
+#		Default: 30 // 30 minutes
+
+GUILD_WARZ.PIGPAYZ_TIMER = 30
+
+# This setting will adjust how the Guild Rank System will re-rank.
+# 
+# 	GUILDWARZ.RANKING_TIMER
+#		Description:  How often do the GUilds get Re-Ranked in minutes.
+#		Default: 1
+#		1 = via the GUILDWARZ.RANKING_TIMER.
+#		2 = via Event(when any location changes owner).
+
+GUILD_WARZ.RANK_TYPE = 1
+
+# This setting will adjust the Guild Rank's recalculation timer.
+# 
+# 	GUILDWARZ.RANKING_TIMER
+#		Description:  How often do the GUilds get Re-Ranked in minutes.
+#		Default: 10 // 10 minutes
+
+GUILD_WARZ.RANKING_TIMER = 10
+
+# This setting will adjust how many guilds to show in the top ranked Guild's list.
+#
+# 		GUILDWARZ.RANK_MAX
+#		Default: 100
+
+GUILD_WARZ.RANK_MAX = 100
+#
+#####################################################################################################################
