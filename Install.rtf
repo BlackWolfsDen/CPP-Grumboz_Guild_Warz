@@ -1,28 +1,20 @@
 Add the 2 files(Grumboz_Guild_Warz.cpp and Grumboz_Guild_Warz.h) to the \src\server\scripts\Custom\ folder.
 
 
-\src\server\game\Scripting\ScriptLoader.cpp
+\src\server\scripts\Custom\Custom_Script_Loader.cpp
+[CODE]
+// This is where scripts' loading functions should be declared:
+	void AddSC_Grumboz_Guild_Warz();
 
-#ifdef SCRIPTS
-/* This is where custom scripts' loading functions should be declared. */
-	void AddSC_Grunboz_Guild_Warz();
-#endif
-
+// The name of this function should match:
+//void Add${ NameOfDirectory }Scripts()
 void AddCustomScripts()
 {
-#ifdef SCRIPTS
-    /* This is where custom scripts should be added. */
-	AddSC_Grunboz_Guild_Warz();
-#endif
+	AddSC_Grumboz_Guild_Warz();
 }
+[/CODE]
+
 ------------------------------------------
-
-\src\server\scripts\Custom
-CMakeLists.txt
-
-Custom/Grumboz_Guild_Warz.cpp
-
-
 ------------------------------------------
 ------------------------------------------
 src\server\worldserver\worldserver.conf
