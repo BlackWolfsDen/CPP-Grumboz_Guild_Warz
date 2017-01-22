@@ -1,4 +1,4 @@
-﻿/*
+/*
 -- **g****************************************s***
 -- ********© Grumbo'z Guild Warz System™ ©********
 -- ********** Brought to you by Grumbo  *******l**
@@ -31,18 +31,24 @@ Trinity Core2 WotlK C++ version.
 #include "Common.h"
 #include "Config.h"
 #include <cstring>
+#include "GameObject.h"
 #include "GameObjectAI.h"
+#include "GossipDef.h"
 #include "Grumboz_Guild_Warz.h"
 #include "Guild.h"
 #include "GuildMgr.h"
 #include "item.h"
 #include "Language.h"
 #include "MapManager.h"
+// #include "ObjectAccessor.h"
+// #include "ObjectDefines.h"
+// #include "Opcodes.h"
 #include "ObjectMgr.h"
 #include "player.h"
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
-//#include "ScriptMgr.h"
+#include "ScriptMgr.h"
+#include "mysql.h"
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -122,7 +128,7 @@ GuildWarz::~GuildWarz()
 {
 }
 
-uint64 ConvertStringToNumber(std::string arg)
+uint64 GGW_ConvertStringToNumber(std::string arg)
 {
 	uint64 Value64;
 
@@ -243,21 +249,22 @@ bool LoadCommands()
 			uint32 mailbox_L = fields[71].GetUInt32();
 			uint64 mailbox_id = fields[72].GetUInt64();
 			std::string setup = fields[73].GetString();
-			std::string color_1 = fields[74].GetString();
-			std::string color_2 = fields[75].GetString();
-			std::string color_3 = fields[76].GetString();
-			std::string color_4 = fields[77].GetString();
-			std::string color_5 = fields[78].GetString();
-			std::string color_6 = fields[79].GetString();
-			std::string color_7 = fields[80].GetString();
-			std::string color_8 = fields[81].GetString();
-			std::string color_9 = fields[82].GetString();
-			std::string color_10 = fields[83].GetString();
-			std::string color_11 = fields[84].GetString();
-			std::string color_12 = fields[85].GetString();
-			std::string color_13 = fields[86].GetString();
-			std::string color_14 = fields[87].GetString();
-			std::string color_15 = fields[88].GetString();
+			uint8 allowed = fields[74].GetUInt8();
+			std::string color_1 = fields[75].GetString();
+			std::string color_2 = fields[76].GetString();
+			std::string color_3 = fields[77].GetString();
+			std::string color_4 = fields[78].GetString();
+			std::string color_5 = fields[79].GetString();
+			std::string color_6 = fields[80].GetString();
+			std::string color_7 = fields[81].GetString();
+			std::string color_8 = fields[82].GetString();
+			std::string color_9 = fields[83].GetString();
+			std::string color_10 = fields[84].GetString();
+			std::string color_11 = fields[85].GetString();
+			std::string color_12 = fields[86].GetString();
+			std::string color_13 = fields[87].GetString();
+			std::string color_14 = fields[88].GetString();
+			std::string color_15 = fields[89].GetString();
 
 			Commands& data = GWCOMM[guild_id]; // like Lua table GWARZ[guild_id].entry
 			data.guild = guild;
@@ -334,6 +341,7 @@ bool LoadCommands()
 			data.mailbox_L = mailbox_L;
 			data.mailbox_id = mailbox_id;
 			data.setup = setup;
+			data.allowed = allowed;
 			data.color_1 = color_1;
 			data.color_2 = color_2;
 			data.color_3 = color_3;
@@ -636,12 +644,20 @@ public:
 			case 1:
 				events.CancelEvent(1);
 				CreateRankList();
-				new GGW_RankTimer();
+
+					if (GUILDWARZ_RANK_TYPE < 2) 
+					{ 
+						events.ScheduleEvent(1, GUILDWARZ_RANKING_TIMER); 
+
+						if (test) { TC_LOG_INFO("server.loading", "GUILD_WARZ_RANK_TIMER : TICKED"); };
+					};
+
 				rank_binary_ticker = true;
 				break;
 			};
 		};
 	};
+
 EventMap events;
 };
 
@@ -715,7 +731,7 @@ class GGW_LoadGWtable : public WorldScript
 			{
 				TC_LOG_INFO("server.loading", "- Guild Ranking type:Timer           -", GW_version);
 				CreateRankList();
-				new GGW_RankTimer();
+				events.ScheduleEvent(1, GUILDWARZ_RANKING_TIMER);
 			};
 
 			if (GUILDWARZ_RANK_TYPE > 1) TC_LOG_INFO("server.loading", "- Guild Ranking type:OnEvent         -", GW_version);
@@ -726,6 +742,7 @@ class GGW_LoadGWtable : public WorldScript
 			TC_LOG_INFO("server.loading", "-        Guild Warz Ver:%.2fc        -", GW_version);
 			TC_LOG_INFO("server.loading", "______________________________________");
 		};
+	EventMap events;
 };
 
 void SendGuildMessage(uint32 guild_id, std::string msg)
@@ -799,63 +816,63 @@ void UpdateGuildLocData(std::string column_target, std::string new_data, uint32 
 	}
 	if (column_target == "team")
 	{
-		GWARZ[loc_id].team = uint8(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].team = uint8(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "farm_count")
 	{
-		GWARZ[loc_id].farm_count = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].farm_count = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "barrack_count")
 	{
-		GWARZ[loc_id].barrack_count = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].barrack_count = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "hall_count")
 	{
-		GWARZ[loc_id].hall_count = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].hall_count = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "pig_count")
 	{
-		GWARZ[loc_id].pig_count = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].pig_count = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "guard_count")
 	{
-		GWARZ[loc_id].guard_count = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].guard_count = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vendor1_count")
 	{
-		GWARZ[loc_id].vendor1_count = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].vendor1_count = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vendor2_count")
 	{
-		GWARZ[loc_id].vendor2_count = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].vendor2_count = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vendor3_count")
 	{
-		GWARZ[loc_id].vendor3_count = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].vendor3_count = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "cannon_count")
 	{
-		GWARZ[loc_id].cannon_count = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].cannon_count = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vault_count")
 	{
-		GWARZ[loc_id].vault_count = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].vault_count = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "mailbox_count")
 	{
-		GWARZ[loc_id].mailbox_count = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].mailbox_count = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "flag_id")
 	{
-		GWARZ[loc_id].flag_id = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].flag_id = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "fs_time")
 	{
-		GWARZ[loc_id].fs_time = ConvertStringToNumber(new_data); // sWorld->GetGameTime();
+		GWARZ[loc_id].fs_time = GGW_ConvertStringToNumber(new_data); // sWorld->GetGameTime();
 	}
 	if (column_target == "guild_id")
 	{
-		GWARZ[loc_id].guild_id = uint32(ConvertStringToNumber(new_data));
+		GWARZ[loc_id].guild_id = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 };
 
@@ -1111,29 +1128,29 @@ void UpdateGuildCommandData(std::string column_target, std::string new_data, uin
 	}
 	if (column_target == "guild_invite")
 	{
-		GWCOMM[guild_id].guild_invite = uint8(ConvertStringToNumber(new_data));
+		GWCOMM[guild_id].guild_invite = uint8(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "GLD_lvlb")
 	{
-		GWCOMM[guild_id].GLD_lvlb = uint8(ConvertStringToNumber(new_data));
+		GWCOMM[guild_id].GLD_lvlb = uint8(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "GLD_lvls")
 	{
-		GWCOMM[guild_id].GLD_lvls = uint8(ConvertStringToNumber(new_data));
+		GWCOMM[guild_id].GLD_lvls = uint8(GGW_ConvertStringToNumber(new_data));
 	}
 
 // ADMIN
 	if (column_target == "GM_admin")
 	{
-		GWCOMM[SERVER_GUILD_ID].GM_admin = uint8(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].GM_admin = uint8(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "GM_minimum")
 	{
-		GWCOMM[SERVER_GUILD_ID].GM_minimum = uint8(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].GM_minimum = uint8(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "currency")
 	{
-		GWCOMM[SERVER_GUILD_ID].currency = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].currency = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "respawn_flag")
 	{
@@ -1161,171 +1178,176 @@ void UpdateGuildCommandData(std::string column_target, std::string new_data, uin
 	}
 	if (column_target == "pig_payz")
 	{
-		GWCOMM[SERVER_GUILD_ID].pig_payz = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].pig_payz = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "pig_payz_timer")
 	{
-		GWCOMM[SERVER_GUILD_ID].pig_payz_timer = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].pig_payz_timer = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "gift_count")
 	{
-		GWCOMM[SERVER_GUILD_ID].gift_count = uint32(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].gift_count = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "flag_require")
 	{
-		GWCOMM[SERVER_GUILD_ID].flag_require = uint8(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].flag_require = uint8(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "anarchy")
 	{
-		GWCOMM[SERVER_GUILD_ID].anarchy = uint8(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].anarchy = uint8(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "f_timer")
 	{
-		GWCOMM[SERVER_GUILD_ID].f_timer = uint8(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].f_timer = uint8(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "s_timer")
 	{
-		GWCOMM[SERVER_GUILD_ID].s_timer = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].s_timer = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "loc_cost")
 	{
-		GWCOMM[SERVER_GUILD_ID].loc_cost = uint32(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].loc_cost = uint32(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "flag_id")
 	{
-		GWCOMM[SERVER_GUILD_ID].flag_id = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].flag_id = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "farm_cost")
 	{
-		GWCOMM[SERVER_GUILD_ID].farm_cost = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].farm_cost = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "farm_L")
 	{
-		GWCOMM[SERVER_GUILD_ID].farm_L = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].farm_L = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "farm_id")
 	{
-		GWCOMM[SERVER_GUILD_ID].farm_id = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].farm_id = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "barrack_cost")
 	{
-		GWCOMM[SERVER_GUILD_ID].barrack_cost = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].barrack_cost = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "barrack_L")
 	{
-		GWCOMM[SERVER_GUILD_ID].barrack_L = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].barrack_L = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "barrack_id")
 	{
-		GWCOMM[SERVER_GUILD_ID].barrack_id = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].barrack_id = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "hall_cost")
 	{
-		GWCOMM[SERVER_GUILD_ID].hall_cost = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].hall_cost = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "hall_L")
 	{
-		GWCOMM[SERVER_GUILD_ID].hall_L = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].hall_L = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "hall_id")
 	{
-		GWCOMM[SERVER_GUILD_ID].hall_id = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].hall_id = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "pig_cost")
 	{
-		GWCOMM[SERVER_GUILD_ID].pig_cost = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].pig_cost = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "pig_L")
 	{
-		GWCOMM[SERVER_GUILD_ID].pig_L = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].pig_L = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "pig_id")
 	{
-		GWCOMM[SERVER_GUILD_ID].pig_id = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].pig_id = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "guard_cost")
 	{
-		GWCOMM[SERVER_GUILD_ID].guard_cost = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].guard_cost = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "guard_L")
 	{
-		GWCOMM[SERVER_GUILD_ID].barrack_L = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].barrack_L = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "guard_id")
 	{
-		GWCOMM[SERVER_GUILD_ID].guard_id = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].guard_id = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vendor1_cost")
 	{
-		GWCOMM[SERVER_GUILD_ID].vendor1_cost = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vendor1_cost = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vendor1_L")
 	{
-		GWCOMM[SERVER_GUILD_ID].vendor1_L = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vendor1_L = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vendor1_id")
 	{
-		GWCOMM[SERVER_GUILD_ID].vendor1_id = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vendor1_id = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vendor2_cost")
 	{
-		GWCOMM[SERVER_GUILD_ID].vendor2_cost = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vendor2_cost = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vendor2_L")
 	{
-		GWCOMM[SERVER_GUILD_ID].vendor2_L = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vendor2_L = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vendor2_id")
 	{
-		GWCOMM[SERVER_GUILD_ID].vendor2_id = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vendor2_id = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vendor3_cost")
 	{
-		GWCOMM[SERVER_GUILD_ID].vendor3_cost = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vendor3_cost = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vendor3_L")
 	{
-		GWCOMM[SERVER_GUILD_ID].vendor3_L = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vendor3_L = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vendor3_id")
 	{
-		GWCOMM[SERVER_GUILD_ID].vendor3_id = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vendor3_id = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "cannon_cost")
 	{
-		GWCOMM[SERVER_GUILD_ID].cannon_cost = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].cannon_cost = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "cannon_L")
 	{
-		GWCOMM[SERVER_GUILD_ID].cannon_L = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].cannon_L = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "cannon_id")
 	{
-		GWCOMM[SERVER_GUILD_ID].cannon_id = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].cannon_id = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vault_cost")
 	{
-		GWCOMM[SERVER_GUILD_ID].vault_cost = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vault_cost = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vault_L")
 	{
-		GWCOMM[SERVER_GUILD_ID].vault_L = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vault_L = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "vault_id")
 	{
-		GWCOMM[SERVER_GUILD_ID].vault_id = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vault_id = uint64(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "mailbox_cost")
 	{
-		GWCOMM[SERVER_GUILD_ID].vault_cost = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vault_cost = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "mailbox_L")
 	{
-		GWCOMM[SERVER_GUILD_ID].mailbox_L = uint16(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].mailbox_L = uint16(GGW_ConvertStringToNumber(new_data));
 	}
 	if (column_target == "mailbox_id")
 	{
-		GWCOMM[SERVER_GUILD_ID].vault_id = uint64(ConvertStringToNumber(new_data));
+		GWCOMM[SERVER_GUILD_ID].vault_id = uint64(GGW_ConvertStringToNumber(new_data));
+	}
+	// System
+	if (column_target == "allowed")
+	{
+		GWCOMM[guild_id].allowed = uint8(GGW_ConvertStringToNumber(new_data));
 	}
 };
 
@@ -1394,9 +1416,9 @@ uint32 SpawnGuildObjects(uint8 type, uint32 flat_id, uint32 team_id, uint32 guil
 		GameObject* GGW_GO = new GameObject(); // creating an empty GameObject shell.
 
 		ObjectGuid::LowType guidLow = map->GenerateLowGuid<HighGuid::GameObject>();
-//		uint32 guidLow = sObjectMgr->G//GenerateLowGuid(HIGHGUID_GAMEOBJECT); // generate a GUID low.
+		G3D::Quat rot = G3D::Matrix3::fromEulerAnglesZYX(player->GetOrientation(), 0.f, 0.f);
 
-		if (!GGW_GO->Create(guidLow, id, map, PHASEMASK_NORMAL, x, y, z, o, 0, 0, 0, 0, 0, GO_STATE_ACTIVE, 0)) // attempt to create a GO with the guidlow, id and fill the shell with data retrieved with id.
+			if (!GGW_GO->Create(guidLow, id, map, PHASEMASK_NORMAL, *player, rot, 255, GO_STATE_ACTIVE))
 			{
 				ChatHandler(player->GetSession()).PSendSysMessage("%sFlag build error..", GWCOMM[guild_id].color_15.c_str());
 				delete GGW_GO;
@@ -1423,9 +1445,9 @@ uint32 SpawnGuildObjects(uint8 type, uint32 flat_id, uint32 team_id, uint32 guil
 	return false;
 };
 
-class GGW_GuildCreate : public GuildScript
+class GGW_GuildEngine : public GuildScript
 {
-public: GGW_GuildCreate() : GuildScript("GGW_GuildCreate"){ };
+public: GGW_GuildEngine() : GuildScript("GGW_GuildEngine"){ };
 
 		virtual void OnCreate(Guild* guild, Player* leader, const std::string& name)
 		{
@@ -1437,18 +1459,11 @@ public: GGW_GuildCreate() : GuildScript("GGW_GuildCreate"){ };
 
 			UpdateGuildCommandData("team", ConvertNumberToString(team), guild_id);
 
-			leader->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].gift_count);
-
 			uint32 total_gross_worth = CalculateTotalLocationsValue(guild_id);
 			bool dummyUpdateRankEntry = UpdateRankEntry(guild_id, total_gross_worth, team);
 
-			ChatHandler(leader->GetSession()).PSendSysMessage("<%sGrumbo|r>:%sHere is %u %s's to get your Guild Plot started.", GWCOMM[guild_id].color_6.c_str(), GWCOMM[guild_id].color_10.c_str(), GWCOMM[SERVER_GUILD_ID].gift_count, Currencyname.c_str());
+			leader->AddItem( 65000 + team, 1);
 		}
-};
-
-class GGW_GuildDelete : public GuildScript
-{
-public: GGW_GuildDelete() : GuildScript("GGW_GuildDelete"){ };
 
 		virtual void OnDisband(Guild* guild)
 		{
@@ -1456,7 +1471,7 @@ public: GGW_GuildDelete() : GuildScript("GGW_GuildDelete"){ };
 
 			WorldDatabase.PExecute("DELETE FROM %s WHERE `guild_id`='%u';", commands_db.c_str(), guild_id);
 
-//			WorldDatabase.PExecute("UPDATE %s SET `guild_name` = '%s' AND `team` = '0' AND `flag_id` = '0' AND `guild_id` = '%u' WHERE `guild_id` = '%u';", zones_db.c_str(), SERVER_GUILD_NAME.c_str(), SERVER_GUILD_ID, guild_id); //  WHERE `guild_id` = '%u'
+			//			WorldDatabase.PExecute("UPDATE %s SET `guild_name` = '%s' AND `team` = '0' AND `flag_id` = '0' AND `guild_id` = '%u' WHERE `guild_id` = '%u';", zones_db.c_str(), SERVER_GUILD_NAME.c_str(), SERVER_GUILD_ID, guild_id); //  WHERE `guild_id` = '%u'
 
 			for (uint32 pos = 1; pos <= GWARZ.size(); pos++)
 			{
@@ -1470,9 +1485,16 @@ public: GGW_GuildDelete() : GuildScript("GGW_GuildDelete"){ };
 			}
 
 			WorldDatabase.PExecute("DELETE FROM %s WHERE `guild_id` = '%u';", ranking_db.c_str(), guild_id);
-			
+
 			GWCOMM.erase(guild_id);
 			GWARZ.erase(guild_id);
+		}
+
+		virtual void OnEvent(Guild* guild, uint8 eventType, ObjectGuid::LowType playerGuid1, ObjectGuid::LowType playerGuid2, uint8 newRank) 
+		{ 
+			std::string GuildEventMap[5] = { "Unknown1", "Unknown2", "member_rank_up", "Member_rank_down", "Unknown5"};
+
+			TC_LOG_INFO("server.loading", "GUILD_NAME:%s EVENT_ID:%u PLAYER1_GUID:%u PLAYER2_GUID:%u", guild->GetName().c_str(), GuildEventMap[eventType], playerGuid1, playerGuid2);
 		}
 };
 
@@ -1683,6 +1705,7 @@ public: GGW_commands() : PlayerScript("GGW_commands"){ };
 			std::string guild_name = guild->GetName();
 			uint8 pGuildRank = player->GetRank();
 			uint8 pGMRank = player->GetSession()->GetSecurity();
+			uint32 GuildLeaderGUID = guild->GetLeaderGUID();
 
 			uint32 gGuildID = GWCOMM[guild_id].guild_id;
 
@@ -2303,143 +2326,309 @@ public: GGW_commands() : PlayerScript("GGW_commands"){ };
 
 				if (pGuildRank <= GWCOMM[guild_id].GLD_lvlb && ChatCache[1] == "buy")
 				{
-					if (player->IsGameMaster())
+					if(GWCOMM[guild_id].allowed >= 1)
 					{
-						ChatHandler(player->GetSession()).PSendSysMessage("%sYou Must exit GM mode first to use this command.", GWCOMM[guild_id].color_15.c_str());
-					}
-					
-					if (GWARZ[LocId].team == SERVER_GUILD_TEAM_LOCKED_ID)
-					{
-						ChatHandler(player->GetSession()).PSendSysMessage("%sTHIS AREA IS OFF LIMITS.|r", GWCOMM[guild_id].color_15.c_str());
-					};
-
-					if (!player->IsGameMaster())
-					{
-
-/*
--- **** Location ****
-*/
-
-						if (ChatCache[2] == GWCOMM[guild_id].loc)
+						if (player->IsGameMaster())
 						{
-							if ((GWARZ[LocId].guild_id != SERVER_GUILD_ID) || (GWARZ[LocId].guild_id == guild_id))
-							{
-								ChatHandler(player->GetSession()).PSendSysMessage("%sYou cannot purchase this area.", GWCOMM[guild_id].color_15.c_str());
-								ChatHandler(player->GetSession()).PSendSysMessage("%s%s|r owns this area.", GWCOMM[guild_id].color_14.c_str(), GWARZ[LocId].guild_name.c_str());
-							}
+							ChatHandler(player->GetSession()).PSendSysMessage("%sYou Must exit GM mode first to use this command.", GWCOMM[guild_id].color_15.c_str());
+						}
+					
+						if (GWARZ[LocId].team == SERVER_GUILD_TEAM_LOCKED_ID)
+						{
+							ChatHandler(player->GetSession()).PSendSysMessage("%sTHIS AREA IS OFF LIMITS.|r", GWCOMM[guild_id].color_15.c_str());
+						};
 
-							if (GWARZ[LocId].guild_id == SERVER_GUILD_ID)
+						if (!player->IsGameMaster())
+						{
+
+	/*
+	-- **** Location ****
+	*/
+
+							if (ChatCache[2] == GWCOMM[guild_id].loc)
 							{
-								if (GWARZ[LocId].team == 2)
+								if ((GWARZ[LocId].guild_id != SERVER_GUILD_ID) || (GWARZ[LocId].guild_id == guild_id))
 								{
-									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < Zoneprice)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou do not have enough %s's.", GWCOMM[guild_id].color_15.c_str(), Currencyname.c_str());
-									};
+									ChatHandler(player->GetSession()).PSendSysMessage("%sYou cannot purchase this area.", GWCOMM[guild_id].color_15.c_str());
+									ChatHandler(player->GetSession()).PSendSysMessage("%s%s|r owns this area.", GWCOMM[guild_id].color_14.c_str(), GWARZ[LocId].guild_name.c_str());
+								}
 
-									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= Zoneprice) // Flag spawn is handled uniquely since i need to store its GUIDLow();
+								if (GWARZ[LocId].guild_id == SERVER_GUILD_ID)
+								{
+									if (GWARZ[LocId].team == 2)
 									{
-										uint32 spawnflagGUID = SpawnGuildObjects(2, GWCOMM[SERVER_GUILD_ID].flag_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
-
-										if (!spawnflagGUID)
+										if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < Zoneprice)
 										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%sflag spawn error..|r Try again.", GWCOMM[guild_id].color_15.c_str());
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou do not have enough %s's.", GWCOMM[guild_id].color_15.c_str(), Currencyname.c_str());
 										};
 
-										if (spawnflagGUID)
+										if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= Zoneprice) // Flag spawn is handled uniquely since i need to store its GUIDLow();
 										{
+											uint32 spawnflagGUID = SpawnGuildObjects(2, GWCOMM[SERVER_GUILD_ID].flag_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
 
-											player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), Zoneprice, true);
+											if (!spawnflagGUID)
+											{
+												ChatHandler(player->GetSession()).PSendSysMessage("%sflag spawn error..|r Try again.", GWCOMM[guild_id].color_15.c_str());
+											};
+
+											if (spawnflagGUID)
+											{
+
+												player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), Zoneprice, true);
 
 			
-											ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", uint32(Zoneprice), Currencyname.c_str());
+												ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", uint32(Zoneprice), Currencyname.c_str());
 
-											if (test){ TC_LOG_INFO("server.loading", "GUILD_ID:%u FLAG_GUID:%u TEAM_ID:%u LOC_ID:%u", guild_id, spawnflagGUID, pTeam_id, LocId); };
-											if (test){ TC_LOG_INFO("server.loading", "GUILD_ID:%u FLAG_GUID:%u TEAM_ID:%u LOC_ID:%u", guild_id, spawnflagGUID, pTeam_id, GWARZ[LocId].entry); };
+												if (test){ TC_LOG_INFO("server.loading", "GUILD_ID:%u FLAG_GUID:%u TEAM_ID:%u LOC_ID:%u", guild_id, spawnflagGUID, pTeam_id, LocId); };
+												if (test){ TC_LOG_INFO("server.loading", "GUILD_ID:%u FLAG_GUID:%u TEAM_ID:%u LOC_ID:%u", guild_id, spawnflagGUID, pTeam_id, GWARZ[LocId].entry); };
 
 											
-											UpdateGuildLocData("guild_name", guild->GetName(), LocId);
-											UpdateGuildLocData("team", ConvertNumberToString(pTeam_id), LocId);
-											UpdateGuildLocData("flag_id", ConvertNumberToString(spawnflagGUID), LocId);
-											UpdateGuildLocData("fs_time", ConvertNumberToString(sWorld->GetGameTime()), LocId);
-											UpdateGuildLocData("guild_id", ConvertNumberToString(guild_id), LocId);
+												UpdateGuildLocData("guild_name", guild->GetName(), LocId);
+												UpdateGuildLocData("team", ConvertNumberToString(pTeam_id), LocId);
+												UpdateGuildLocData("flag_id", ConvertNumberToString(spawnflagGUID), LocId);
+												UpdateGuildLocData("fs_time", ConvertNumberToString(sWorld->GetGameTime()), LocId);
+												UpdateGuildLocData("guild_id", ConvertNumberToString(guild_id), LocId);
 
-											UpdateGuildLocFloat(pX, pY, pZ, LocId);
+												UpdateGuildLocFloat(pX, pY, pZ, LocId);
 
-											std::string ann = GWCOMM[guild_id].color_1 + pName + " has added location:" + str_LocId + " to your Guild Lands.";
+												std::string ann = GWCOMM[guild_id].color_1 + pName + " has added location:" + str_LocId + " to your Guild Lands.";
 
-											SendGuildMessage(GWARZ[LocId].guild_id, ann);
+												SendGuildMessage(GWARZ[LocId].guild_id, ann);
 
-												if (GUILDWARZ_RANK_TYPE > 1) { CreateRankList(); };
+													if (GUILDWARZ_RANK_TYPE > 1) { CreateRankList(); };
 											
-												if (player->getGender() == 0)
-												{
-													ChatHandler(player->GetSession()).PSendSysMessage("%sCongratulations King %s. you have expanded %s's land.|r", GWCOMM[guild_id].color_14.c_str(), pName.c_str(), guild_name.c_str());
-												};
+													if (player->getGender() == 0)
+													{
+														ChatHandler(player->GetSession()).PSendSysMessage("%sCongratulations King %s. you have expanded %s's land.|r", GWCOMM[guild_id].color_14.c_str(), pName.c_str(), guild_name.c_str());
+													};
 
-												if (player->getGender() == 1)
-												{
-													ChatHandler(player->GetSession()).PSendSysMessage("%sCongratulations Queen %s. you have expanded %s's land.|r", GWCOMM[guild_id].color_14.c_str(), pName.c_str(), guild_name.c_str());
-												};
+													if (player->getGender() == 1)
+													{
+														ChatHandler(player->GetSession()).PSendSysMessage("%sCongratulations Queen %s. you have expanded %s's land.|r", GWCOMM[guild_id].color_14.c_str(), pName.c_str(), guild_name.c_str());
+													};
 
-												msg = GGW_MSG;
+													msg = GGW_MSG;
+											}
 										}
 									}
 								}
-							}
-						};
+							};
 
-/*
--- **** Farm ****
-*/
+	/*
+	-- **** Farm ****
+	*/
 
-						if (GWARZ[LocId].guild_id != guild_id)
-						{
-							ChatHandler(player->GetSession()).PSendSysMessage("%sYour Guild does not own this land.", GWCOMM[guild_id].color_15.c_str());
-						};
-
-						if (GWARZ[LocId].guild_id == guild_id)
-						{
-							if (ChatCache[2] == GWCOMM[guild_id].farm)
+							if (GWARZ[LocId].guild_id != guild_id)
 							{
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].farm_cost)
+								ChatHandler(player->GetSession()).PSendSysMessage("%sYour Guild does not own this land.", GWCOMM[guild_id].color_15.c_str());
+							};
+
+							if (GWARZ[LocId].guild_id == guild_id)
+							{
+								if (ChatCache[2] == GWCOMM[guild_id].farm)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYou require more %s's.", GWCOMM[guild_id].color_15.c_str(), Currencyname.c_str());
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].farm_cost)
+									{
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYou require more %s's.", GWCOMM[guild_id].color_15.c_str(), Currencyname.c_str());
+									}
+
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].farm_cost)
+									{
+										if (GWARZ[LocId].farm_count >= GWCOMM[SERVER_GUILD_ID].farm_L)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u farm`s at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].farm_count);
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only purchase %u farm`s per location.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].farm_L);
+										};
+
+										if (GWARZ[LocId].farm_count < GWCOMM[SERVER_GUILD_ID].farm_L)
+										{
+											if (GWARZ[LocId].pig_count < (GWARZ[LocId].farm_count * GWCOMM[SERVER_GUILD_ID].pig_L))
+											{
+												ChatHandler(player->GetSession()).PSendSysMessage("you still need to finish populating your other farms.", GWCOMM[guild_id].color_15.c_str());
+											};
+
+											if (GWARZ[LocId].pig_count >= (GWARZ[LocId].farm_count * GWCOMM[SERVER_GUILD_ID].pig_L))
+											{
+												uint32 spawnfarm = SpawnGuildObjects(1, GWCOMM[SERVER_GUILD_ID].farm_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
+
+												if (!spawnfarm)
+												{
+													ChatHandler(player->GetSession()).PSendSysMessage("%sFarm spawn error..|r Try again.", GWCOMM[guild_id].color_15.c_str());
+												};
+
+												if (spawnfarm)
+												{
+													player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), GWCOMM[SERVER_GUILD_ID].farm_cost, true);
+
+													ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].farm_cost, Currencyname.c_str());
+
+													UpdateGuildLocData("farm_count", ConvertNumberToString(GWARZ[LocId].farm_count + 1), LocId);
+
+													std::string ann = pName + " has added a farm to location:" + str_LocId + ".";
+
+													SendGuildMessage(GWARZ[LocId].guild_id, ann);
+													msg = GGW_MSG;
+												}
+											}
+										}
+									}
 								}
 
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].farm_cost)
-								{
-									if (GWARZ[LocId].farm_count >= GWCOMM[SERVER_GUILD_ID].farm_L)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u farm`s at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].farm_count);
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only purchase %u farm`s per location.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].farm_L);
-									};
+	/*
+	-- **** Barrack ****
+	*/
 
-									if (GWARZ[LocId].farm_count < GWCOMM[SERVER_GUILD_ID].farm_L)
+								if (ChatCache[2] == GWCOMM[guild_id].barrack)
+								{
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].barrack_cost)
 									{
-										if (GWARZ[LocId].pig_count < (GWARZ[LocId].farm_count * GWCOMM[SERVER_GUILD_ID].pig_L))
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYou require more %s's.", GWCOMM[guild_id].color_15.c_str(), Currencyname.c_str());
+									}
+
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].barrack_cost)
+									{
+										if (GWARZ[LocId].barrack_count >= uint32(GWCOMM[SERVER_GUILD_ID].farm_L * GWCOMM[SERVER_GUILD_ID].barrack_L))
 										{
-											ChatHandler(player->GetSession()).PSendSysMessage("you still need to finish populating your other farms.", GWCOMM[guild_id].color_15.c_str());
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u barrack\'s at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].barrack_count);
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only purchase %u barrack\'s per location.", GWCOMM[guild_id].color_15.c_str(), (GWCOMM[SERVER_GUILD_ID].farm_L*GWCOMM[SERVER_GUILD_ID].barrack_L));
 										};
+
+										if (GWARZ[LocId].barrack_count < uint32(GWCOMM[SERVER_GUILD_ID].farm_L * GWCOMM[SERVER_GUILD_ID].barrack_L))
+										{
+											if (GWARZ[LocId].barrack_count >= GWARZ[LocId].farm_count*GWCOMM[SERVER_GUILD_ID].barrack_L)
+											{
+												ChatHandler(player->GetSession()).PSendSysMessage("%sEach farm supports %u barracks. You need another farm.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].barrack_L);
+											};
+
+											if (GWARZ[LocId].barrack_count < (GWARZ[LocId].farm_count*GWCOMM[SERVER_GUILD_ID].barrack_L))
+											{
+												uint32 spawnbarrack = SpawnGuildObjects(1, GWCOMM[SERVER_GUILD_ID].barrack_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
+
+												if (!spawnbarrack)
+												{
+													ChatHandler(player->GetSession()).PSendSysMessage("%sBarrack spawn error..|r Try again.", GWCOMM[guild_id].color_15.c_str());
+												};
+
+												if (spawnbarrack)
+												{
+													player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), GWCOMM[SERVER_GUILD_ID].barrack_cost, true);
+
+													ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].barrack_cost, Currencyname.c_str());
+
+													UpdateGuildLocData("barrack_count", ConvertNumberToString(GWARZ[LocId].barrack_count + 1), LocId);
+
+													std::string ann = pName + " has added a bararck's to location:" + str_LocId + ".";
+
+													SendGuildMessage(GWARZ[LocId].guild_id, ann);
+													msg = GGW_MSG;
+												}
+											}
+										}
+									}
+								}
+
+	/*
+	-- **** Hall ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].hall)
+								{
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].hall_cost)
+									{
+										ChatHandler(player->GetSession()).PSendSysMessage("%sEach hall costs %u %s. You dont have eough.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].hall_cost, Currencyname.c_str());
+									}
+
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].hall_cost)
+									{
+										if (GWARZ[LocId].hall_count >= GWCOMM[SERVER_GUILD_ID].hall_L)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u hall at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].hall_count);
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u hall per area.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].hall_L);
+										}
+
+										if (GWARZ[LocId].hall_count < GWCOMM[SERVER_GUILD_ID].hall_L)
+										{
+											if (GWARZ[LocId].barrack_count == 0)
+											{
+												ChatHandler(player->GetSession()).PSendSysMessage("%sEach Hall require's 1 barracks per location to provide guards for defensive support.", GWCOMM[guild_id].color_15.c_str());
+												ChatHandler(player->GetSession()).PSendSysMessage("%sGotta protect your HQ.", GWCOMM[guild_id].color_15.c_str());
+											}
+
+											if (GWARZ[LocId].barrack_count > 0)
+											{
+												uint32 spawnhall = SpawnGuildObjects(1, GWCOMM[SERVER_GUILD_ID].hall_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
+
+												if (!spawnhall)
+												{
+													ChatHandler(player->GetSession()).PSendSysMessage("%sHall spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+												};
+
+												if (spawnhall)
+												{
+													player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), GWCOMM[SERVER_GUILD_ID].hall_cost, true);
+
+													ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].hall_cost, Currencyname.c_str());
+
+													UpdateGuildLocData("hall_count", ConvertNumberToString(GWARZ[LocId].hall_count + 1), LocId);
+
+													std::string ann = pName + " has added a hall to location:" + str_LocId + ".";
+
+													SendGuildMessage(GWARZ[LocId].guild_id, ann);
+													msg = GGW_MSG;
+												}
+											}
+										}
+									}
+								} // hall
+
+	/*
+	-- **** Pigs ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].pig)
+								{
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].pig_cost)
+									{
+										ChatHandler(player->GetSession()).PSendSysMessage("%sEach pig costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].pig_cost, Currencyname.c_str());
+									}
+
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].pig_cost)
+									{
+										if (GWARZ[LocId].pig_count >= uint32(GWCOMM[SERVER_GUILD_ID].pig_L * GWCOMM[SERVER_GUILD_ID].farm_L))
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("You have %u pigs at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].pig_count*GWCOMM[SERVER_GUILD_ID].farm_L);
+											ChatHandler(player->GetSession()).PSendSysMessage("You can only have %u pig's per farm and %u farm's per location.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].pig_L, GWCOMM[SERVER_GUILD_ID].farm_L);
+										}
+
+										if (GWARZ[LocId].farm_count == 0)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must first have a farm here before you can add pigs.", GWCOMM[guild_id].color_15.c_str());
+											ChatHandler(player->GetSession()).PSendSysMessage("%sPiggies gotta live somewhere...", GWCOMM[guild_id].color_15.c_str());
+										}
 
 										if (GWARZ[LocId].pig_count >= (GWARZ[LocId].farm_count * GWCOMM[SERVER_GUILD_ID].pig_L))
 										{
-											uint32 spawnfarm = SpawnGuildObjects(1, GWCOMM[SERVER_GUILD_ID].farm_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou require another farm before you can add any more pigs.", GWCOMM[guild_id].color_15.c_str());
+										}
 
-											if (!spawnfarm)
+										if (GWARZ[LocId].pig_count < uint32(GWCOMM[SERVER_GUILD_ID].pig_L * GWARZ[LocId].farm_count) && GWARZ[LocId].farm_count != 0) // (GWARZ[LocId].pig_count < uint32(GWCOMM[SERVER_GUILD_ID].pig_L * GWCOMM[SERVER_GUILD_ID].farm_L) && GWARZ[LocId].farm_count != 0)
+										{
+											uint32 spawnpig = SpawnGuildObjects(0, GWCOMM[SERVER_GUILD_ID].pig_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
+
+											if (!spawnpig)
 											{
-												ChatHandler(player->GetSession()).PSendSysMessage("%sFarm spawn error..|r Try again.", GWCOMM[guild_id].color_15.c_str());
-											};
+												ChatHandler(player->GetSession()).PSendSysMessage("%spig spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+											}
 
-											if (spawnfarm)
+											if (spawnpig)
 											{
-												player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), GWCOMM[SERVER_GUILD_ID].farm_cost, true);
+												player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].pig_cost), true);
 
-												ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].farm_cost, Currencyname.c_str());
+												ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].pig_cost, Currencyname.c_str());
 
-												UpdateGuildLocData("farm_count", ConvertNumberToString(GWARZ[LocId].farm_count + 1), LocId);
+												UpdateGuildLocData("pig_count", ConvertNumberToString(GWARZ[LocId].pig_count + 1), LocId);
 
-												std::string ann = pName + " has added a farm to location:" + str_LocId + ".";
+												std::string ann = pName + " has added a pig to location:" + str_LocId + ".";
 
 												SendGuildMessage(GWARZ[LocId].guild_id, ann);
 												msg = GGW_MSG;
@@ -2447,1177 +2636,1033 @@ public: GGW_commands() : PlayerScript("GGW_commands"){ };
 										}
 									}
 								}
-							}
 
-/*
--- **** Barrack ****
-*/
+	/*
+	-- **** Guard ****
+	*/
 
-							if (ChatCache[2] == GWCOMM[guild_id].barrack)
-							{
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].barrack_cost)
+								if (ChatCache[2] == GWCOMM[guild_id].guard)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYou require more %s's.", GWCOMM[guild_id].color_15.c_str(), Currencyname.c_str());
-								}
-
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].barrack_cost)
-								{
-									if (GWARZ[LocId].barrack_count >= uint32(GWCOMM[SERVER_GUILD_ID].farm_L * GWCOMM[SERVER_GUILD_ID].barrack_L))
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].guard_cost)
 									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u barrack\'s at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].barrack_count);
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only purchase %u barrack\'s per location.", GWCOMM[guild_id].color_15.c_str(), (GWCOMM[SERVER_GUILD_ID].farm_L*GWCOMM[SERVER_GUILD_ID].barrack_L));
+										ChatHandler(player->GetSession()).PSendSysMessage("%aEach guard costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].guard_cost, Currencyname.c_str());
+									}
+
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].guard_cost)
+									{
+										if (GWARZ[LocId].guard_count >= uint16(GWCOMM[SERVER_GUILD_ID].guard_L * (GWCOMM[SERVER_GUILD_ID].barrack_L * GWCOMM[SERVER_GUILD_ID].farm_L)))
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u guards at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].guard_count);
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per location.", GWCOMM[guild_id].color_15.c_str(), (GWCOMM[SERVER_GUILD_ID].guard_L*GWCOMM[SERVER_GUILD_ID].farm_L));
+										}
+
+										if (GWARZ[LocId].guard_count < uint16(GWCOMM[SERVER_GUILD_ID].guard_L * (GWCOMM[SERVER_GUILD_ID].barrack_L * GWCOMM[SERVER_GUILD_ID].farm_L)))
+										{
+											if (GWARZ[LocId].guard_count >= (GWARZ[LocId].barrack_count * GWCOMM[SERVER_GUILD_ID].guard_L))
+											{
+												ChatHandler(player->GetSession()).PSendSysMessage("%sYou must add another barracks to produce more guards.", GWCOMM[guild_id].color_15.c_str());
+											}
+
+											if (GWARZ[LocId].guard_count < (GWARZ[LocId].barrack_count * GWCOMM[SERVER_GUILD_ID].guard_L))
+											{
+												uint32 spawnguard = SpawnGuildObjects(0, GWCOMM[SERVER_GUILD_ID].guard_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
+
+												if (!spawnguard)
+												{
+													ChatHandler(player->GetSession()).PSendSysMessage("%sguard spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+												}
+
+												if (spawnguard)
+												{
+													player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].guard_cost), true);
+
+													ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].guard_cost, Currencyname.c_str());
+
+													UpdateGuildLocData("guard_count", ConvertNumberToString(GWARZ[LocId].guard_count + 1), LocId);
+
+													std::string ann = pName + " has added a guard to location:" + str_LocId + ".";
+
+													SendGuildMessage(GWARZ[LocId].guild_id, ann);
+													msg = GGW_MSG;
+												}
+											}
+										}
+									}
+								} // guard
+
+	/*
+	-- **** Vendor 1 ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].vendor1)
+								{
+									if (!GWCOMM[SERVER_GUILD_ID].vendor1_id)
+									{
+										ChatHandler(player->GetSession()).PSendSysMessage("%sVendor1 is NOT enabled.. Contact your Admin to enable Vendor 1", GWCOMM[guild_id].color_15.c_str());
 									};
 
-									if (GWARZ[LocId].barrack_count < uint32(GWCOMM[SERVER_GUILD_ID].farm_L * GWCOMM[SERVER_GUILD_ID].barrack_L))
+									if (GWCOMM[SERVER_GUILD_ID].vendor1_id)
 									{
-										if (GWARZ[LocId].barrack_count >= GWARZ[LocId].farm_count*GWCOMM[SERVER_GUILD_ID].barrack_L)
+										if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].vendor1_cost)
 										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%sEach farm supports %u barracks. You need another farm.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].barrack_L);
+											ChatHandler(player->GetSession()).PSendSysMessage("%sEach vendor1 costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vendor1_cost, Currencyname.c_str());
+										}
+
+										if (GWARZ[LocId].vendor1_count >= (GWCOMM[SERVER_GUILD_ID].vendor1_L * GWARZ[LocId].hall_count))
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u vendor1's at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].vendor1_count);
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per Hall.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vendor1_L);
+										}
+
+										if (GWARZ[LocId].vendor1_count < (GWCOMM[SERVER_GUILD_ID].vendor1_L * GWARZ[LocId].hall_count))
+										{
+											uint32 spawnvendor1 = SpawnGuildObjects(0, GWCOMM[SERVER_GUILD_ID].vendor1_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
+
+											if (!spawnvendor1)
+											{
+												ChatHandler(player->GetSession()).PSendSysMessage("%svendor1 spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+											}
+
+											if (spawnvendor1)
+											{
+												player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].vendor1_cost), true);
+
+												ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vendor1_cost, Currencyname.c_str());
+
+												UpdateGuildLocData("vendor1_count", ConvertNumberToString(GWARZ[LocId].vendor1_count + 1), LocId);
+
+												std::string ann = pName + " has added a vendor1 to location:" + str_LocId + ".";
+
+												SendGuildMessage(GWARZ[LocId].guild_id, ann);
+												msg = GGW_MSG;
+											}
+										}
+									}
+								} // vendor 1
+
+	/*
+	-- **** Vendor 2 ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].vendor2)
+								{
+									if (!GWCOMM[SERVER_GUILD_ID].vendor2_id)
+									{
+										ChatHandler(player->GetSession()).PSendSysMessage("%sVendor2 is NOT enabled..", GWCOMM[guild_id].color_15.c_str());
+									}
+
+									if (GWCOMM[SERVER_GUILD_ID].vendor2_id)
+									{
+										if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].vendor2_cost)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sEach vendor2 costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vendor2_cost, Currencyname.c_str());
 										};
 
-										if (GWARZ[LocId].barrack_count < (GWARZ[LocId].farm_count*GWCOMM[SERVER_GUILD_ID].barrack_L))
+										if (GWARZ[LocId].vendor2_count >= (GWCOMM[SERVER_GUILD_ID].vendor2_L * GWARZ[LocId].hall_count))
 										{
-											uint32 spawnbarrack = SpawnGuildObjects(1, GWCOMM[SERVER_GUILD_ID].barrack_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
-
-											if (!spawnbarrack)
-											{
-												ChatHandler(player->GetSession()).PSendSysMessage("%sBarrack spawn error..|r Try again.", GWCOMM[guild_id].color_15.c_str());
-											};
-
-											if (spawnbarrack)
-											{
-												player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), GWCOMM[SERVER_GUILD_ID].barrack_cost, true);
-
-												ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].barrack_cost, Currencyname.c_str());
-
-												UpdateGuildLocData("barrack_count", ConvertNumberToString(GWARZ[LocId].barrack_count + 1), LocId);
-
-												std::string ann = pName + " has added a bararck's to location:" + str_LocId + ".";
-
-												SendGuildMessage(GWARZ[LocId].guild_id, ann);
-												msg = GGW_MSG;
-											}
-										}
-									}
-								}
-							}
-
-/*
--- **** Hall ****
-*/
-
-							if (ChatCache[2] == GWCOMM[guild_id].hall)
-							{
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].hall_cost)
-								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sEach hall costs %u %s. You dont have eough.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].hall_cost, Currencyname.c_str());
-								}
-
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].hall_cost)
-								{
-									if (GWARZ[LocId].hall_count >= GWCOMM[SERVER_GUILD_ID].hall_L)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u hall at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].hall_count);
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u hall per area.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].hall_L);
-									}
-
-									if (GWARZ[LocId].hall_count < GWCOMM[SERVER_GUILD_ID].hall_L)
-									{
-										if (GWARZ[LocId].barrack_count == 0)
-										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%sEach Hall require's 1 barracks per location to provide guards for defensive support.", GWCOMM[guild_id].color_15.c_str());
-											ChatHandler(player->GetSession()).PSendSysMessage("%sGotta protect your HQ.", GWCOMM[guild_id].color_15.c_str());
-										}
-
-										if (GWARZ[LocId].barrack_count > 0)
-										{
-											uint32 spawnhall = SpawnGuildObjects(1, GWCOMM[SERVER_GUILD_ID].hall_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
-
-											if (!spawnhall)
-											{
-												ChatHandler(player->GetSession()).PSendSysMessage("%sHall spawn error..|r", GWCOMM[guild_id].color_15.c_str());
-											};
-
-											if (spawnhall)
-											{
-												player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), GWCOMM[SERVER_GUILD_ID].hall_cost, true);
-
-												ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].hall_cost, Currencyname.c_str());
-
-												UpdateGuildLocData("hall_count", ConvertNumberToString(GWARZ[LocId].hall_count + 1), LocId);
-
-												std::string ann = pName + " has added a hall to location:" + str_LocId + ".";
-
-												SendGuildMessage(GWARZ[LocId].guild_id, ann);
-												msg = GGW_MSG;
-											}
-										}
-									}
-								}
-							} // hall
-
-/*
--- **** Pigs ****
-*/
-
-							if (ChatCache[2] == GWCOMM[guild_id].pig)
-							{
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].pig_cost)
-								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sEach pig costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].pig_cost, Currencyname.c_str());
-								}
-
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].pig_cost)
-								{
-									if (GWARZ[LocId].pig_count >= uint32(GWCOMM[SERVER_GUILD_ID].pig_L * GWCOMM[SERVER_GUILD_ID].farm_L))
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("You have %u pigs at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].pig_count*GWCOMM[SERVER_GUILD_ID].farm_L);
-										ChatHandler(player->GetSession()).PSendSysMessage("You can only have %u pig's per farm and %u farm's per location.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].pig_L, GWCOMM[SERVER_GUILD_ID].farm_L);
-									}
-
-									if (GWARZ[LocId].farm_count == 0)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must first have a farm here before you can add pigs.", GWCOMM[guild_id].color_15.c_str());
-										ChatHandler(player->GetSession()).PSendSysMessage("%sPiggies gotta live somewhere...", GWCOMM[guild_id].color_15.c_str());
-									}
-
-									if (GWARZ[LocId].pig_count >= (GWARZ[LocId].farm_count * GWCOMM[SERVER_GUILD_ID].pig_L))
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou require another farm before you can add any more pigs.", GWCOMM[guild_id].color_15.c_str());
-									}
-
-									if (GWARZ[LocId].pig_count < uint32(GWCOMM[SERVER_GUILD_ID].pig_L * GWARZ[LocId].farm_count) && GWARZ[LocId].farm_count != 0) // (GWARZ[LocId].pig_count < uint32(GWCOMM[SERVER_GUILD_ID].pig_L * GWCOMM[SERVER_GUILD_ID].farm_L) && GWARZ[LocId].farm_count != 0)
-									{
-										uint32 spawnpig = SpawnGuildObjects(0, GWCOMM[SERVER_GUILD_ID].pig_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
-
-										if (!spawnpig)
-										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%spig spawn error..|r", GWCOMM[guild_id].color_15.c_str());
-										}
-
-										if (spawnpig)
-										{
-											player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].pig_cost), true);
-
-											ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].pig_cost, Currencyname.c_str());
-
-											UpdateGuildLocData("pig_count", ConvertNumberToString(GWARZ[LocId].pig_count + 1), LocId);
-
-											std::string ann = pName + " has added a pig to location:" + str_LocId + ".";
-
-											SendGuildMessage(GWARZ[LocId].guild_id, ann);
-											msg = GGW_MSG;
-										}
-									}
-								}
-							}
-
-/*
--- **** Guard ****
-*/
-
-							if (ChatCache[2] == GWCOMM[guild_id].guard)
-							{
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].guard_cost)
-								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%aEach guard costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].guard_cost, Currencyname.c_str());
-								}
-
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].guard_cost)
-								{
-									if (GWARZ[LocId].guard_count >= uint16(GWCOMM[SERVER_GUILD_ID].guard_L * (GWCOMM[SERVER_GUILD_ID].barrack_L * GWCOMM[SERVER_GUILD_ID].farm_L)))
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u guards at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].guard_count);
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per location.", GWCOMM[guild_id].color_15.c_str(), (GWCOMM[SERVER_GUILD_ID].guard_L*GWCOMM[SERVER_GUILD_ID].farm_L));
-									}
-
-									if (GWARZ[LocId].guard_count < uint16(GWCOMM[SERVER_GUILD_ID].guard_L * (GWCOMM[SERVER_GUILD_ID].barrack_L * GWCOMM[SERVER_GUILD_ID].farm_L)))
-									{
-										if (GWARZ[LocId].guard_count >= (GWARZ[LocId].barrack_count * GWCOMM[SERVER_GUILD_ID].guard_L))
-										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must add another barracks to produce more guards.", GWCOMM[guild_id].color_15.c_str());
-										}
-
-										if (GWARZ[LocId].guard_count < (GWARZ[LocId].barrack_count * GWCOMM[SERVER_GUILD_ID].guard_L))
-										{
-											uint32 spawnguard = SpawnGuildObjects(0, GWCOMM[SERVER_GUILD_ID].guard_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
-
-											if (!spawnguard)
-											{
-												ChatHandler(player->GetSession()).PSendSysMessage("%sguard spawn error..|r", GWCOMM[guild_id].color_15.c_str());
-											}
-
-											if (spawnguard)
-											{
-												player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].guard_cost), true);
-
-												ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].guard_cost, Currencyname.c_str());
-
-												UpdateGuildLocData("guard_count", ConvertNumberToString(GWARZ[LocId].guard_count + 1), LocId);
-
-												std::string ann = pName + " has added a guard to location:" + str_LocId + ".";
-
-												SendGuildMessage(GWARZ[LocId].guild_id, ann);
-												msg = GGW_MSG;
-											}
-										}
-									}
-								}
-							} // guard
-
-/*
--- **** Vendor 1 ****
-*/
-
-							if (ChatCache[2] == GWCOMM[guild_id].vendor1)
-							{
-								if (!GWCOMM[SERVER_GUILD_ID].vendor1_id)
-								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sVendor1 is NOT enabled.. Contact your Admin to enable Vendor 1", GWCOMM[guild_id].color_15.c_str());
-								};
-
-								if (GWCOMM[SERVER_GUILD_ID].vendor1_id)
-								{
-									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].vendor1_cost)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sEach vendor1 costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vendor1_cost, Currencyname.c_str());
-									}
-
-									if (GWARZ[LocId].vendor1_count >= (GWCOMM[SERVER_GUILD_ID].vendor1_L * GWARZ[LocId].hall_count))
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u vendor1's at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].vendor1_count);
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per Hall.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vendor1_L);
-									}
-
-									if (GWARZ[LocId].vendor1_count < (GWCOMM[SERVER_GUILD_ID].vendor1_L * GWARZ[LocId].hall_count))
-									{
-										uint32 spawnvendor1 = SpawnGuildObjects(0, GWCOMM[SERVER_GUILD_ID].vendor1_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
-
-										if (!spawnvendor1)
-										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%svendor1 spawn error..|r", GWCOMM[guild_id].color_15.c_str());
-										}
-
-										if (spawnvendor1)
-										{
-											player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].vendor1_cost), true);
-
-											ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vendor1_cost, Currencyname.c_str());
-
-											UpdateGuildLocData("vendor1_count", ConvertNumberToString(GWARZ[LocId].vendor1_count + 1), LocId);
-
-											std::string ann = pName + " has added a vendor1 to location:" + str_LocId + ".";
-
-											SendGuildMessage(GWARZ[LocId].guild_id, ann);
-											msg = GGW_MSG;
-										}
-									}
-								}
-							} // vendor 1
-
-/*
--- **** Vendor 2 ****
-*/
-
-							if (ChatCache[2] == GWCOMM[guild_id].vendor2)
-							{
-								if (!GWCOMM[SERVER_GUILD_ID].vendor2_id)
-								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sVendor2 is NOT enabled..", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWCOMM[SERVER_GUILD_ID].vendor2_id)
-								{
-									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].vendor2_cost)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sEach vendor2 costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vendor2_cost, Currencyname.c_str());
-									};
-
-									if (GWARZ[LocId].vendor2_count >= (GWCOMM[SERVER_GUILD_ID].vendor2_L * GWARZ[LocId].hall_count))
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u vendor2's at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].vendor1_count);
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per location.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vendor2_L);
-									};
-
-									if (GWARZ[LocId].vendor2_count < (GWCOMM[SERVER_GUILD_ID].vendor2_L * GWARZ[LocId].hall_count))
-									{
-										uint32 spawnvendor2 = SpawnGuildObjects(0, GWCOMM[SERVER_GUILD_ID].vendor2_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
-
-										if (!spawnvendor2)
-										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%svendor2 spawn error..|r", GWCOMM[guild_id].color_15.c_str());
-										}
-
-										if (spawnvendor2)
-										{
-											player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].vendor2_cost), true);
-
-											UpdateGuildLocData("vendor2_count", ConvertNumberToString(GWARZ[LocId].vendor2_count + 1), LocId);
-
-											ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vendor2_cost, Currencyname.c_str());
-
-											std::string ann = pName + " has added a vendor2 to location:" + str_LocId + ".";
-											msg = GGW_MSG;
-										}
-									}
-								}
-							} // vendor 2
-
-/*
--- **** Vendor 3 ****
-*/
-
-							if (ChatCache[2] == GWCOMM[guild_id].vendor3)
-							{
-								if (!GWCOMM[SERVER_GUILD_ID].vendor3_id)
-								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sVendor3 is NOT enabled..", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWCOMM[SERVER_GUILD_ID].vendor3_id)
-								{
-									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].vendor3_cost)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sEach vendor3 costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vendor3_cost, Currencyname.c_str());
-									};
-
-									if (GWARZ[LocId].vendor3_count >= (GWCOMM[SERVER_GUILD_ID].vendor3_L * GWARZ[LocId].hall_count))
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u vendor3's at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].vendor1_count);
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per location.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vendor2_L);
-									};
-
-									if (GWARZ[LocId].vendor3_count < GWCOMM[SERVER_GUILD_ID].vendor3_L)
-									{
-										uint32 spawnvendor3 = SpawnGuildObjects(0, GWCOMM[SERVER_GUILD_ID].vendor3_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
-
-										if (!spawnvendor3)
-										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%svendor3 spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u vendor2's at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].vendor1_count);
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per location.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vendor2_L);
 										};
 
-										if (spawnvendor3)
+										if (GWARZ[LocId].vendor2_count < (GWCOMM[SERVER_GUILD_ID].vendor2_L * GWARZ[LocId].hall_count))
 										{
-											player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].vendor3_cost), true);
+											uint32 spawnvendor2 = SpawnGuildObjects(0, GWCOMM[SERVER_GUILD_ID].vendor2_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
 
-											UpdateGuildLocData("vendor3_count", ConvertNumberToString(GWARZ[LocId].vendor3_count + 1), LocId);
+											if (!spawnvendor2)
+											{
+												ChatHandler(player->GetSession()).PSendSysMessage("%svendor2 spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+											}
 
-											ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vendor3_cost, Currencyname.c_str());
+											if (spawnvendor2)
+											{
+												player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].vendor2_cost), true);
 
-											std::string ann = pName + " has added a vendor3 to location:" + str_LocId + ".";
+												UpdateGuildLocData("vendor2_count", ConvertNumberToString(GWARZ[LocId].vendor2_count + 1), LocId);
 
-											SendGuildMessage(GWARZ[LocId].guild_id, ann);
-											msg = GGW_MSG;
+												ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vendor2_cost, Currencyname.c_str());
+
+												std::string ann = pName + " has added a vendor2 to location:" + str_LocId + ".";
+												msg = GGW_MSG;
+											}
 										}
 									}
-								}
-							} // vendor 3
+								} // vendor 2
 
-/*
--- **** Cannon ****
-*/
+	/*
+	-- **** Vendor 3 ****
+	*/
 
-							if (ChatCache[2] == GWCOMM[guild_id].cannon)
-							{
-
-								if (!GWCOMM[SERVER_GUILD_ID].cannon_id)
+								if (ChatCache[2] == GWCOMM[guild_id].vendor3)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%scannon's NOT enabled..", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWCOMM[SERVER_GUILD_ID].cannon_id)
-								{
-									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].cannon_cost)
+									if (!GWCOMM[SERVER_GUILD_ID].vendor3_id)
 									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sEach cannon costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].cannon_cost, Currencyname.c_str());
+										ChatHandler(player->GetSession()).PSendSysMessage("%sVendor3 is NOT enabled..", GWCOMM[guild_id].color_15.c_str());
 									}
 
-									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].cannon_cost)
+									if (GWCOMM[SERVER_GUILD_ID].vendor3_id)
 									{
-										if (GWARZ[LocId].cannon_count >= (GWCOMM[SERVER_GUILD_ID].cannon_L * GWARZ[LocId].hall_count))
+										if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].vendor3_cost)
 										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u %s's at this location.|r", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].cannon_count, GWCOMM[guild_id].cannon.c_str());
-											ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per Hall.|r", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].cannon_L);
+											ChatHandler(player->GetSession()).PSendSysMessage("%sEach vendor3 costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vendor3_cost, Currencyname.c_str());
+										};
+
+										if (GWARZ[LocId].vendor3_count >= (GWCOMM[SERVER_GUILD_ID].vendor3_L * GWARZ[LocId].hall_count))
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u vendor3's at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].vendor1_count);
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per location.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vendor2_L);
+										};
+
+										if (GWARZ[LocId].vendor3_count < GWCOMM[SERVER_GUILD_ID].vendor3_L)
+										{
+											uint32 spawnvendor3 = SpawnGuildObjects(0, GWCOMM[SERVER_GUILD_ID].vendor3_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
+
+											if (!spawnvendor3)
+											{
+												ChatHandler(player->GetSession()).PSendSysMessage("%svendor3 spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+											};
+
+											if (spawnvendor3)
+											{
+												player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].vendor3_cost), true);
+
+												UpdateGuildLocData("vendor3_count", ConvertNumberToString(GWARZ[LocId].vendor3_count + 1), LocId);
+
+												ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vendor3_cost, Currencyname.c_str());
+
+												std::string ann = pName + " has added a vendor3 to location:" + str_LocId + ".";
+
+												SendGuildMessage(GWARZ[LocId].guild_id, ann);
+												msg = GGW_MSG;
+											}
+										}
+									}
+								} // vendor 3
+
+	/*
+	-- **** Cannon ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].cannon)
+								{
+
+									if (!GWCOMM[SERVER_GUILD_ID].cannon_id)
+									{
+										ChatHandler(player->GetSession()).PSendSysMessage("%scannon's NOT enabled..", GWCOMM[guild_id].color_15.c_str());
+									}
+
+									if (GWCOMM[SERVER_GUILD_ID].cannon_id)
+									{
+										if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].cannon_cost)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sEach cannon costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].cannon_cost, Currencyname.c_str());
 										}
 
-										if (GWARZ[LocId].cannon_count < (GWCOMM[SERVER_GUILD_ID].cannon_L * GWARZ[LocId].hall_count))
+										if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].cannon_cost)
+										{
+											if (GWARZ[LocId].cannon_count >= (GWCOMM[SERVER_GUILD_ID].cannon_L * GWARZ[LocId].hall_count))
+											{
+												ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u %s's at this location.|r", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].cannon_count, GWCOMM[guild_id].cannon.c_str());
+												ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per Hall.|r", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].cannon_L);
+											}
+
+											if (GWARZ[LocId].cannon_count < (GWCOMM[SERVER_GUILD_ID].cannon_L * GWARZ[LocId].hall_count))
+											{
+												if (GWARZ[LocId].hall_count == 0)
+												{
+													ChatHandler(player->GetSession()).PSendSysMessage("%sCannons require a Hall per location.", GWCOMM[guild_id].color_15.c_str());
+												}
+
+												if (GWARZ[LocId].hall_count > 0)
+												{
+													uint32 spawncannon = SpawnGuildObjects(0, GWCOMM[SERVER_GUILD_ID].cannon_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
+
+													if (!spawncannon)
+													{
+														ChatHandler(player->GetSession()).PSendSysMessage("%scannon spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+													}
+
+													if (spawncannon)
+													{
+														player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].cannon_cost), true);
+
+														ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].cannon_cost, Currencyname.c_str());
+
+														UpdateGuildLocData("cannon_count", ConvertNumberToString(GWARZ[LocId].cannon_count + 1), LocId);
+
+														std::string ann = pName + " has added a cannon to location:" + str_LocId + ".";
+
+														SendGuildMessage(GWARZ[LocId].guild_id, ann);
+
+														ChatHandler(player->GetSession()).PSendSysMessage("%s!! Its a cannon !!|r", GWCOMM[guild_id].color_14.c_str());
+														msg = GGW_MSG;
+
+													}
+												}
+											}
+										}
+									}
+								} // cannon
+
+	/*
+	-- **** Vault ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].vault)
+								{
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].vault_cost)
+									{
+										ChatHandler(player->GetSession()).PSendSysMessage("%sEach vault costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vault_cost, Currencyname.c_str());
+									}
+
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].vault_cost)
+									{
+										if (GWARZ[LocId].vault_count >= (GWCOMM[SERVER_GUILD_ID].vault_cost * GWARZ[LocId].hall_count))
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u %s's at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].vault_count, GWCOMM[guild_id].vault.c_str());
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per hall.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vault_L);
+										}
+
+										if (GWARZ[LocId].vault_count < GWCOMM[SERVER_GUILD_ID].vault_L * GWARZ[LocId].hall_count)
 										{
 											if (GWARZ[LocId].hall_count == 0)
 											{
-												ChatHandler(player->GetSession()).PSendSysMessage("%sCannons require a Hall per location.", GWCOMM[guild_id].color_15.c_str());
+												ChatHandler(player->GetSession()).PSendSysMessage("%sVaults require a Hall.", GWCOMM[guild_id].color_15.c_str());
 											}
 
 											if (GWARZ[LocId].hall_count > 0)
 											{
-												uint32 spawncannon = SpawnGuildObjects(0, GWCOMM[SERVER_GUILD_ID].cannon_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
+												uint32 spawnvault = SpawnGuildObjects(1, GWCOMM[SERVER_GUILD_ID].vault_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
 
-												if (!spawncannon)
+												if (!spawnvault)
 												{
-													ChatHandler(player->GetSession()).PSendSysMessage("%scannon spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+													ChatHandler(player->GetSession()).PSendSysMessage("%svault spawn error..|r", GWCOMM[guild_id].color_15.c_str());
 												}
 
-												if (spawncannon)
+												if (spawnvault)
 												{
-													player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].cannon_cost), true);
+													player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].vault_cost), true);
 
-													ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].cannon_cost, Currencyname.c_str());
+													UpdateGuildLocData("vault_count", ConvertNumberToString(GWARZ[LocId].vault_count + 1), LocId);
 
-													UpdateGuildLocData("cannon_count", ConvertNumberToString(GWARZ[LocId].cannon_count + 1), LocId);
+													ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vault_cost, Currencyname.c_str());
 
-													std::string ann = pName + " has added a cannon to location:" + str_LocId + ".";
+													std::string ann = pName + " has added a vault to location:" + str_LocId + ".";
 
 													SendGuildMessage(GWARZ[LocId].guild_id, ann);
-
-													ChatHandler(player->GetSession()).PSendSysMessage("%s!! Its a cannon !!|r", GWCOMM[guild_id].color_14.c_str());
 													msg = GGW_MSG;
-
 												}
 											}
 										}
 									}
-								}
-							} // cannon
+								} // vault
 
-/*
--- **** Vault ****
-*/
+	/*
+	-- **** MailBox ****
+	*/
 
-							if (ChatCache[2] == GWCOMM[guild_id].vault)
-							{
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].vault_cost)
+								if (ChatCache[2] == GWCOMM[guild_id].mailbox)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sEach vault costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vault_cost, Currencyname.c_str());
-								}
-
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= GWCOMM[SERVER_GUILD_ID].vault_cost)
-								{
-									if (GWARZ[LocId].vault_count >= (GWCOMM[SERVER_GUILD_ID].vault_cost * GWARZ[LocId].hall_count))
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].mailbox_cost)
 									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u %s's at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].vault_count, GWCOMM[guild_id].vault.c_str());
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per hall.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].vault_L);
+										ChatHandler(player->GetSession()).PSendSysMessage("%sEach mailbox costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].mailbox_cost, Currencyname.c_str());
 									}
 
-									if (GWARZ[LocId].vault_count < GWCOMM[SERVER_GUILD_ID].vault_L * GWARZ[LocId].hall_count)
+									if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= (GWCOMM[SERVER_GUILD_ID].mailbox_cost * GWARZ[LocId].vault_count))
 									{
-										if (GWARZ[LocId].hall_count == 0)
+										if (GWARZ[LocId].mailbox_count >= GWCOMM[SERVER_GUILD_ID].mailbox_L * GWARZ[LocId].hall_count)
 										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%sVaults require a Hall.", GWCOMM[guild_id].color_15.c_str());
-										}
-
-										if (GWARZ[LocId].hall_count > 0)
-										{
-											uint32 spawnvault = SpawnGuildObjects(1, GWCOMM[SERVER_GUILD_ID].vault_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
-
-											if (!spawnvault)
-											{
-												ChatHandler(player->GetSession()).PSendSysMessage("%svault spawn error..|r", GWCOMM[guild_id].color_15.c_str());
-											}
-
-											if (spawnvault)
-											{
-												player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].vault_cost), true);
-
-												UpdateGuildLocData("vault_count", ConvertNumberToString(GWARZ[LocId].vault_count + 1), LocId);
-
-												ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vault_cost, Currencyname.c_str());
-
-												std::string ann = pName + " has added a vault to location:" + str_LocId + ".";
-
-												SendGuildMessage(GWARZ[LocId].guild_id, ann);
-												msg = GGW_MSG;
-											}
-										}
-									}
-								}
-							} // vault
-
-/*
--- **** MailBox ****
-*/
-
-							if (ChatCache[2] == GWCOMM[guild_id].mailbox)
-							{
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) < GWCOMM[SERVER_GUILD_ID].mailbox_cost)
-								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sEach mailbox costs %u %s.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].mailbox_cost, Currencyname.c_str());
-								}
-
-								if (player->GetItemCount(GWCOMM[SERVER_GUILD_ID].currency) >= (GWCOMM[SERVER_GUILD_ID].mailbox_cost * GWARZ[LocId].vault_count))
-								{
-									if (GWARZ[LocId].mailbox_count >= GWCOMM[SERVER_GUILD_ID].mailbox_L * GWARZ[LocId].hall_count)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u %s's at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].mailbox_count, GWCOMM[guild_id].mailbox.c_str());
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per hall.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].mailbox_L);
-									};
-
-									if (GWARZ[LocId].mailbox_count < (GWCOMM[SERVER_GUILD_ID].mailbox_cost * GWARZ[LocId].vault_count))
-									{
-										if (GWARZ[LocId].hall_count == 0)
-										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%smailbox require a Hall.", GWCOMM[guild_id].color_15.c_str());
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou have %u %s's at this location.", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].mailbox_count, GWCOMM[guild_id].mailbox.c_str());
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou can only have %u per hall.", GWCOMM[guild_id].color_15.c_str(), GWCOMM[SERVER_GUILD_ID].mailbox_L);
 										};
 
-										if (GWARZ[LocId].hall_count > 0)
+										if (GWARZ[LocId].mailbox_count < (GWCOMM[SERVER_GUILD_ID].mailbox_cost * GWARZ[LocId].vault_count))
 										{
-											uint32 spawnmailbox = SpawnGuildObjects(1, GWCOMM[SERVER_GUILD_ID].mailbox_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
-
-											if (!spawnmailbox)
+											if (GWARZ[LocId].hall_count == 0)
 											{
-												ChatHandler(player->GetSession()).PSendSysMessage("%smailbox spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+												ChatHandler(player->GetSession()).PSendSysMessage("%smailbox require a Hall.", GWCOMM[guild_id].color_15.c_str());
 											};
 
-											if (spawnmailbox)
+											if (GWARZ[LocId].hall_count > 0)
 											{
-												player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].mailbox_cost), true);
+												uint32 spawnmailbox = SpawnGuildObjects(1, GWCOMM[SERVER_GUILD_ID].mailbox_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
 
-												UpdateGuildLocData("mailbox_count", ConvertNumberToString(GWARZ[LocId].mailbox_count + 1), LocId);
+												if (!spawnmailbox)
+												{
+													ChatHandler(player->GetSession()).PSendSysMessage("%smailbox spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+												};
 
-												ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].mailbox_cost, Currencyname.c_str());
+												if (spawnmailbox)
+												{
+													player->DestroyItemCount(uint32(GWCOMM[SERVER_GUILD_ID].currency), uint32(GWCOMM[SERVER_GUILD_ID].mailbox_cost), true);
 
-												std::string ann = pName + " has added a mailbox to location:" + str_LocId + ".";
+													UpdateGuildLocData("mailbox_count", ConvertNumberToString(GWARZ[LocId].mailbox_count + 1), LocId);
 
-												SendGuildMessage(GWARZ[LocId].guild_id, ann);
-												msg = GGW_MSG;
+													ChatHandler(player->GetSession()).PSendSysMessage("-%u %s's.|r", GWCOMM[SERVER_GUILD_ID].mailbox_cost, Currencyname.c_str());
+
+													std::string ann = pName + " has added a mailbox to location:" + str_LocId + ".";
+
+													SendGuildMessage(GWARZ[LocId].guild_id, ann);
+													msg = GGW_MSG;
+												}
 											}
 										}
 									}
-								}
-							} // mailbox
-						} // is owned by player guild
-					} // NOT in GM mode
+								} // mailbox
+							} // is owned by player guild
+						} // NOT in GM mode
+					}// allowed to buy/sell
+					else
+					{
+						if (GuildLeaderGUID == pGuid)
+							ChatHandler(player->GetSession()).PSendSysMessage("<%sGrumbo|r>:%sSpeak With Your faction Leader to gain access to ownership and development.", GWCOMM[guild_id].color_1.c_str(), GWCOMM[guild_id].color_1.c_str());
+						else
+							ChatHandler(player->GetSession()).PSendSysMessage("<%sGrumbo|r>:%sRemind your Guild Leader to Speak With Your faction Leader to gain access to ownership and development.", GWCOMM[guild_id].color_1.c_str(), GWCOMM[guild_id].color_1.c_str());
+					}
+					msg = GGW_MSG;
 				} // buy commands
 
 // ******************* Sell commands *******************
 
 				if ((pGuildRank <= GWCOMM[guild_id].GLD_lvlb) && ChatCache[1] == "sell")
 				{
-					if (player->IsGameMaster())
+					if (GWCOMM[guild_id].allowed >= 1)
 					{
-						ChatHandler(player->GetSession()).PSendSysMessage("%sYou Must exit GM mode first to use this command.", GWCOMM[guild_id].color_15.c_str());
-					};
-
-					if (!player->IsGameMaster())
-					{
-						if (GWARZ[LocId].guild_id != guild_id)
+						if (player->IsGameMaster())
 						{
-							ChatHandler(player->GetSession()).PSendSysMessage("%sYour Guild does not own this land.", GWCOMM[guild_id].color_15.c_str());
+							ChatHandler(player->GetSession()).PSendSysMessage("%sYou Must exit GM mode first to use this command.", GWCOMM[guild_id].color_15.c_str());
 						};
 
-						if (GWARZ[LocId].guild_id == guild_id)
+						if (!player->IsGameMaster())
 						{
-
-/*
--- **** Location ****
-*/
-
-							if (ChatCache[2] == GWCOMM[guild_id].loc)
+							if (GWARZ[LocId].guild_id != guild_id)
 							{
-								GameObject *object = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].flag_id + pTeam_id, 5);
+								ChatHandler(player->GetSession()).PSendSysMessage("%sYour Guild does not own this land.", GWCOMM[guild_id].color_15.c_str());
+							};
 
-								if (!object)
-								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYou must stand closer to your flag.|r", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (object)
-								{
-									if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, Zoneprice))
-									{
-										object->RemoveFromWorld();
-										object->DeleteFromDB();
-
-										UpdateGuildLocData("guild_name", SERVER_GUILD_NAME, LocId);
-										UpdateGuildLocData("team", "2", LocId);
-										UpdateGuildLocData("guild_id", ConvertNumberToString(SERVER_GUILD_ID), LocId);
-
-										std::string ann = pName + " has sold location:" + str_LocId + ".";
-
-										SendGuildMessage(GWARZ[LocId].guild_id, ann);
-
-										if (GUILDWARZ_RANK_TYPE > 1) { CreateRankList(); };
-
-										ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", Zoneprice, Currencyname.c_str());
-										msg = GGW_MSG;
-									} // can add currency
-								}
-							} // location
-
-/*
--- **** Farm ****
-*/
-
-							if (ChatCache[2] == GWCOMM[guild_id].farm)
+							if (GWARZ[LocId].guild_id == guild_id)
 							{
-								if (GWARZ[LocId].farm_count == 0)
+
+	/*
+	-- **** Location ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].loc)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYour guild does not own a farm at this location.", GWCOMM[guild_id].color_15.c_str());
-								}
+									GameObject *object = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].flag_id + pTeam_id, 5);
 
-								if (GWARZ[LocId].farm_count > 0)
+									if (!object)
+									{
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must stand closer to your flag.|r", GWCOMM[guild_id].color_15.c_str());
+									}
+
+									if (object)
+									{
+										if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, Zoneprice))
+										{
+											object->RemoveFromWorld();
+											object->DeleteFromDB();
+
+											UpdateGuildLocData("guild_name", SERVER_GUILD_NAME, LocId);
+											UpdateGuildLocData("team", "2", LocId);
+											UpdateGuildLocData("guild_id", ConvertNumberToString(SERVER_GUILD_ID), LocId);
+
+											std::string ann = pName + " has sold location:" + str_LocId + ".";
+
+											SendGuildMessage(GWARZ[LocId].guild_id, ann);
+
+											if (GUILDWARZ_RANK_TYPE > 1) { CreateRankList(); };
+
+											ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", Zoneprice, Currencyname.c_str());
+											msg = GGW_MSG;
+										} // can add currency
+									}
+								} // location
+
+	/*
+	-- **** Farm ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].farm)
 								{
-									if (GWARZ[LocId].pig_count > ((GWCOMM[SERVER_GUILD_ID].pig_L) * (GWARZ[LocId].farm_count - 1)))
+									if (GWARZ[LocId].farm_count == 0)
 									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell |r %u%s pigs  before removing there housing.|r", GWCOMM[guild_id].color_15.c_str(), (GWARZ[LocId].pig_count - (GWCOMM[SERVER_GUILD_ID].pig_L * (GWARZ[LocId].farm_count - 1))), GWCOMM[guild_id].color_15.c_str());
-									};
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYour guild does not own a farm at this location.", GWCOMM[guild_id].color_15.c_str());
+									}
 
-									if (GWARZ[LocId].pig_count <= ((GWCOMM[SERVER_GUILD_ID].pig_L) * (GWARZ[LocId].farm_count - 1)))
+									if (GWARZ[LocId].farm_count > 0)
 									{
-										GameObject *go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].farm_id, 5);
-
-										if (!go)
+										if (GWARZ[LocId].pig_count > ((GWCOMM[SERVER_GUILD_ID].pig_L) * (GWARZ[LocId].farm_count - 1)))
 										{
-											go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].farm_id + 1, 5);
-										}
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell |r %u%s pigs  before removing there housing.|r", GWCOMM[guild_id].color_15.c_str(), (GWARZ[LocId].pig_count - (GWCOMM[SERVER_GUILD_ID].pig_L * (GWARZ[LocId].farm_count - 1))), GWCOMM[guild_id].color_15.c_str());
+										};
 
-										if (!go)
+										if (GWARZ[LocId].pig_count <= ((GWCOMM[SERVER_GUILD_ID].pig_L) * (GWARZ[LocId].farm_count - 1)))
 										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must stand closer to a farm.|r", GWCOMM[guild_id].color_15.c_str());
-										}
+											GameObject *go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].farm_id, 5);
 
-										if (go)
-										{
-											if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].farm_cost))
+											if (!go)
 											{
-												go->RemoveFromWorld();
-												go->DeleteFromDB();
+												go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].farm_id + 1, 5);
+											}
 
-												UpdateGuildLocData("farm_count", ConvertNumberToString(GWARZ[LocId].farm_count - 1), LocId);
-
-												std::string ann = pName + " has sold a farm from location:" + str_LocId + ".";
-
-												SendGuildMessage(GWARZ[LocId].guild_id, ann);
-
-												ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].farm_cost, Currencyname.c_str());
-												msg = GGW_MSG;
-											} // can add currency
-										}
-									} // enough pigs
-								} // has farms
-							} // farm
-
-/*
--- **** Barrack ****
-*/
-
-							if (ChatCache[2] == GWCOMM[guild_id].barrack)
-							{
-								if (GWARZ[LocId].barrack_count == 0)
-								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYour guild does not own a barrack at this location.", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWARZ[LocId].barrack_count > 0)
-								{
-									if (GWARZ[LocId].guard_count > ((GWCOMM[SERVER_GUILD_ID].guard_L) * (GWARZ[LocId].barrack_count - 1)))
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell|r %u %sguards before removing there Barrack's.|r", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].guard_count - (GWCOMM[SERVER_GUILD_ID].guard_L * (GWARZ[LocId].barrack_count - 1)), GWCOMM[guild_id].color_15.c_str());
-									}
-
-									if (GWARZ[LocId].guard_count <= ((GWCOMM[SERVER_GUILD_ID].guard_L) * (GWARZ[LocId].barrack_count - 1)))
-									{
-										GameObject *go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].barrack_id, 5);
-
-										if (!go)
-										{
-											go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].barrack_id + 1, 5);
-										}
-
-										if (!go)
-										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must stand closer to a barrack.|r", GWCOMM[guild_id].color_15.c_str());
-										}
-
-										if (go)
-										{
-											if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].barrack_cost))
+											if (!go)
 											{
-												go->ToGameObject()->RemoveFromWorld();
-												go->ToGameObject()->DeleteFromDB();
+												ChatHandler(player->GetSession()).PSendSysMessage("%sYou must stand closer to a farm.|r", GWCOMM[guild_id].color_15.c_str());
+											}
 
-												UpdateGuildLocData("barrack_count", ConvertNumberToString(GWARZ[LocId].barrack_count - 1), LocId);
-
-												std::string ann = pName + " has sold a barrack from location:" + str_LocId + ".";
-
-												SendGuildMessage(GWARZ[LocId].guild_id, ann);
-
-												ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].barrack_cost, Currencyname.c_str());
-												msg = GGW_MSG;
-											} // can add currency
-										}
-									} // enough guards
-								} // has barracks
-							} // barrack
-
-/*
--- **** Hall ****
-*/
-
-							if (ChatCache[2] == GWCOMM[guild_id].hall)
-							{
-								if (GWARZ[LocId].hall_count == 0)
-								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYour guild does not own a hall at this location.", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWARZ[LocId].hall_count > 0)
-								{
-									if (GWARZ[LocId].vendor1_count > 0)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell off your vendor1's before removing a Hall.|r", GWCOMM[guild_id].color_15.c_str());
-									}
-									if (GWARZ[LocId].vendor2_count > 0)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell off your vendor2's before removing a Hall.|r", GWCOMM[guild_id].color_15.c_str());
-									}
-									if (GWARZ[LocId].vendor3_count > 0)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell off your vendor3's before removing a Hall.|r", GWCOMM[guild_id].color_15.c_str());
-									}
-									if (GWARZ[LocId].cannon_count > 0)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell off your cannon's before removing a Hall.|r", GWCOMM[guild_id].color_15.c_str());
-									}
-									if (GWARZ[LocId].vault_count > 0)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell off your vault's before removing a Hall.|r", GWCOMM[guild_id].color_15.c_str());
-									}
-									if (GWARZ[LocId].mailbox_count > 0)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell off your mailbox's before removing a Hall.|r", GWCOMM[guild_id].color_15.c_str());
-									}
-
-									if ((GWARZ[LocId].vendor1_count == 0) && (GWARZ[LocId].vendor2_count == 0) && (GWARZ[LocId].vendor3_count == 0) && (GWARZ[LocId].cannon_count == 0) && (GWARZ[LocId].vault_count == 0) && (GWARZ[LocId].mailbox_count == 0))
-
-									{
-										GameObject *go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].hall_id, 10.0);
-
-										if (!go)
-										{
-											go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].hall_id + 1, 10.0);
-										}
-
-										if (!go)
-										{
-											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must stand closer to your hall.|r", GWCOMM[guild_id].color_15.c_str());
-										}
-
-										if (go)
-										{
-											if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].hall_cost))
+											if (go)
 											{
-												go->ToGameObject()->RemoveFromWorld();
-												go->ToGameObject()->DeleteFromDB();
+												if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].farm_cost))
+												{
+													go->RemoveFromWorld();
+													go->DeleteFromDB();
 
-												UpdateGuildLocData("hall_count", ConvertNumberToString(GWARZ[LocId].hall_count - 1), LocId);
+													UpdateGuildLocData("farm_count", ConvertNumberToString(GWARZ[LocId].farm_count - 1), LocId);
 
-												std::string ann = pName + " has sold a hall from location:" + str_LocId + ".";
+													std::string ann = pName + " has sold a farm from location:" + str_LocId + ".";
 
-												SendGuildMessage(GWARZ[LocId].guild_id, ann);
+													SendGuildMessage(GWARZ[LocId].guild_id, ann);
 
-												ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].hall_cost, Currencyname.c_str());
-												msg = GGW_MSG;
-											} // can add currency
-										} // found go
-									} // find go
-								} // has hall
-							} // hall
+													ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].farm_cost, Currencyname.c_str());
+													msg = GGW_MSG;
+												} // can add currency
+											}
+										} // enough pigs
+									} // has farms
+								} // farm
 
-/*
--- **** Pig ****
-*/
+	/*
+	-- **** Barrack ****
+	*/
 
-							if (ChatCache[2] == GWCOMM[guild_id].pig)
-							{
-								if (GWARZ[LocId].pig_count == 0)
+								if (ChatCache[2] == GWCOMM[guild_id].barrack)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYou DONT have any pigs in this area.", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWARZ[LocId].pig_count > 0)
-								{
-									Unit *unit = player->GetSelectedUnit();
-
-									if (!unit)
+									if (GWARZ[LocId].barrack_count == 0)
 									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a pig.|r", GWCOMM[guild_id].color_15.c_str());
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYour guild does not own a barrack at this location.", GWCOMM[guild_id].color_15.c_str());
 									}
 
-									if (unit)
+									if (GWARZ[LocId].barrack_count > 0)
 									{
-										if (unit->GetTypeId() != 3)
+										if (GWARZ[LocId].guard_count > ((GWCOMM[SERVER_GUILD_ID].guard_L) * (GWARZ[LocId].barrack_count - 1)))
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell|r %u %sguards before removing there Barrack's.|r", GWCOMM[guild_id].color_15.c_str(), GWARZ[LocId].guard_count - (GWCOMM[SERVER_GUILD_ID].guard_L * (GWARZ[LocId].barrack_count - 1)), GWCOMM[guild_id].color_15.c_str());
+										}
+
+										if (GWARZ[LocId].guard_count <= ((GWCOMM[SERVER_GUILD_ID].guard_L) * (GWARZ[LocId].barrack_count - 1)))
+										{
+											GameObject *go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].barrack_id, 5);
+
+											if (!go)
+											{
+												go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].barrack_id + 1, 5);
+											}
+
+											if (!go)
+											{
+												ChatHandler(player->GetSession()).PSendSysMessage("%sYou must stand closer to a barrack.|r", GWCOMM[guild_id].color_15.c_str());
+											}
+
+											if (go)
+											{
+												if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].barrack_cost))
+												{
+													go->ToGameObject()->RemoveFromWorld();
+													go->ToGameObject()->DeleteFromDB();
+
+													UpdateGuildLocData("barrack_count", ConvertNumberToString(GWARZ[LocId].barrack_count - 1), LocId);
+
+													std::string ann = pName + " has sold a barrack from location:" + str_LocId + ".";
+
+													SendGuildMessage(GWARZ[LocId].guild_id, ann);
+
+													ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].barrack_cost, Currencyname.c_str());
+													msg = GGW_MSG;
+												} // can add currency
+											}
+										} // enough guards
+									} // has barracks
+								} // barrack
+
+	/*
+	-- **** Hall ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].hall)
+								{
+									if (GWARZ[LocId].hall_count == 0)
+									{
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYour guild does not own a hall at this location.", GWCOMM[guild_id].color_15.c_str());
+									}
+
+									if (GWARZ[LocId].hall_count > 0)
+									{
+										if (GWARZ[LocId].vendor1_count > 0)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell off your vendor1's before removing a Hall.|r", GWCOMM[guild_id].color_15.c_str());
+										}
+										if (GWARZ[LocId].vendor2_count > 0)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell off your vendor2's before removing a Hall.|r", GWCOMM[guild_id].color_15.c_str());
+										}
+										if (GWARZ[LocId].vendor3_count > 0)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell off your vendor3's before removing a Hall.|r", GWCOMM[guild_id].color_15.c_str());
+										}
+										if (GWARZ[LocId].cannon_count > 0)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell off your cannon's before removing a Hall.|r", GWCOMM[guild_id].color_15.c_str());
+										}
+										if (GWARZ[LocId].vault_count > 0)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell off your vault's before removing a Hall.|r", GWCOMM[guild_id].color_15.c_str());
+										}
+										if (GWARZ[LocId].mailbox_count > 0)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must sell off your mailbox's before removing a Hall.|r", GWCOMM[guild_id].color_15.c_str());
+										}
+
+										if ((GWARZ[LocId].vendor1_count == 0) && (GWARZ[LocId].vendor2_count == 0) && (GWARZ[LocId].vendor3_count == 0) && (GWARZ[LocId].cannon_count == 0) && (GWARZ[LocId].vault_count == 0) && (GWARZ[LocId].mailbox_count == 0))
+
+										{
+											GameObject *go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].hall_id, 10.0);
+
+											if (!go)
+											{
+												go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].hall_id + 1, 10.0);
+											}
+
+											if (!go)
+											{
+												ChatHandler(player->GetSession()).PSendSysMessage("%sYou must stand closer to your hall.|r", GWCOMM[guild_id].color_15.c_str());
+											}
+
+											if (go)
+											{
+												if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].hall_cost))
+												{
+													go->ToGameObject()->RemoveFromWorld();
+													go->ToGameObject()->DeleteFromDB();
+
+													UpdateGuildLocData("hall_count", ConvertNumberToString(GWARZ[LocId].hall_count - 1), LocId);
+
+													std::string ann = pName + " has sold a hall from location:" + str_LocId + ".";
+
+													SendGuildMessage(GWARZ[LocId].guild_id, ann);
+
+													ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].hall_cost, Currencyname.c_str());
+													msg = GGW_MSG;
+												} // can add currency
+											} // found go
+										} // find go
+									} // has hall
+								} // hall
+
+	/*
+	-- **** Pig ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].pig)
+								{
+									if (GWARZ[LocId].pig_count == 0)
+									{
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYou DONT have any pigs in this area.", GWCOMM[guild_id].color_15.c_str());
+									}
+
+									if (GWARZ[LocId].pig_count > 0)
+									{
+										Unit *unit = player->GetSelectedUnit();
+
+										if (!unit)
 										{
 											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a pig.|r", GWCOMM[guild_id].color_15.c_str());
 										}
 
-										if (unit->GetTypeId() == 3)
+										if (unit)
 										{
-											if (unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].pig_id || unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].pig_id + 1)
+											if (unit->GetTypeId() != 3)
 											{
-												if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].pig_cost))
+												ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a pig.|r", GWCOMM[guild_id].color_15.c_str());
+											}
+
+											if (unit->GetTypeId() == 3)
+											{
+												if (unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].pig_id || unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].pig_id + 1)
 												{
-													unit->RemoveFromWorld();
-													unit->ToCreature()->DeleteFromDB();
+													if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].pig_cost))
+													{
+														unit->RemoveFromWorld();
+														unit->ToCreature()->DeleteFromDB();
 
-													UpdateGuildLocData("pig_count", ConvertNumberToString(GWARZ[LocId].pig_count - 1), LocId);
+														UpdateGuildLocData("pig_count", ConvertNumberToString(GWARZ[LocId].pig_count - 1), LocId);
 
-													std::string ann = pName + " has sold a pig from location:" + str_LocId + " to the butcher shop.";
+														std::string ann = pName + " has sold a pig from location:" + str_LocId + " to the butcher shop.";
 
-													SendGuildMessage(GWARZ[LocId].guild_id, ann);
+														SendGuildMessage(GWARZ[LocId].guild_id, ann);
 
-													ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].pig_cost, Currencyname.c_str());
-													msg = GGW_MSG;
-												} // can add currency
-											} // is pig
-										} // is npc
-									} // found go
-								} // has pigs
-							} //pig
+														ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].pig_cost, Currencyname.c_str());
+														msg = GGW_MSG;
+													} // can add currency
+												} // is pig
+											} // is npc
+										} // found go
+									} // has pigs
+								} //pig
 
-/*
--- **** Guard ****
-*/
+	/*
+	-- **** Guard ****
+	*/
 
-							if (ChatCache[2] == GWCOMM[guild_id].guard)
-							{
-								if (GWARZ[LocId].guard_count == 0)
+								if (ChatCache[2] == GWCOMM[guild_id].guard)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYou DONT have any guard's in this area.", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWARZ[LocId].guard_count > 0)
-								{
-									Unit *unit = player->GetSelectedUnit();
-
-									if (!unit)
+									if (GWARZ[LocId].guard_count == 0)
 									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a guard.|r", GWCOMM[guild_id].color_15.c_str());
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYou DONT have any guard's in this area.", GWCOMM[guild_id].color_15.c_str());
 									}
 
-									if (unit)
+									if (GWARZ[LocId].guard_count > 0)
 									{
-										if (unit->GetTypeId() != 3)
+										Unit *unit = player->GetSelectedUnit();
+
+										if (!unit)
 										{
 											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a guard.|r", GWCOMM[guild_id].color_15.c_str());
 										}
 
-										if (unit->GetTypeId() == 3)
+										if (unit)
 										{
-											if (unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].guard_id || unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].guard_id + 1)
+											if (unit->GetTypeId() != 3)
 											{
-												unit->RemoveFromWorld();
-												unit->ToCreature()->DeleteFromDB();
+												ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a guard.|r", GWCOMM[guild_id].color_15.c_str());
+											}
 
-												UpdateGuildLocData("guard_count", ConvertNumberToString(GWARZ[LocId].guard_count - 1), LocId);
+											if (unit->GetTypeId() == 3)
+											{
+												if (unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].guard_id || unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].guard_id + 1)
+												{
+													unit->RemoveFromWorld();
+													unit->ToCreature()->DeleteFromDB();
 
-												std::string ann = pName + " has released a guard from location:" + str_LocId + ".";
+													UpdateGuildLocData("guard_count", ConvertNumberToString(GWARZ[LocId].guard_count - 1), LocId);
 
-												SendGuildMessage(GWARZ[LocId].guild_id, ann);
+													std::string ann = pName + " has released a guard from location:" + str_LocId + ".";
 
-												ChatHandler(player->GetSession()).PSendSysMessage("%sGuards are disposable and dont return %s's.|r", GWCOMM[guild_id].color_14.c_str(), Currencyname.c_str());
-												ChatHandler(player->GetSession()).PSendSysMessage("%s%s Has released a guard.|r", GWCOMM[guild_id].color_14.c_str(), pName.c_str());
-												msg = GGW_MSG;
-											} // is guard
-										} // is npc
-									} // found npc
-								} // has guard
-							} //guard
+													SendGuildMessage(GWARZ[LocId].guild_id, ann);
+
+													ChatHandler(player->GetSession()).PSendSysMessage("%sGuards are disposable and dont return %s's.|r", GWCOMM[guild_id].color_14.c_str(), Currencyname.c_str());
+													ChatHandler(player->GetSession()).PSendSysMessage("%s%s Has released a guard.|r", GWCOMM[guild_id].color_14.c_str(), pName.c_str());
+													msg = GGW_MSG;
+												} // is guard
+											} // is npc
+										} // found npc
+									} // has guard
+								} //guard
 
 
-/*
--- **** Vendor 1 ****
-*/
+	/*
+	-- **** Vendor 1 ****
+	*/
 
-							if (ChatCache[2] == GWCOMM[guild_id].vendor1)
-							{
-								if (GWARZ[LocId].vendor1_count == 0)
+								if (ChatCache[2] == GWCOMM[guild_id].vendor1)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYou DONT have any vendor1's in this area.", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWARZ[LocId].vendor1_count > 0)
-								{
-									Unit *unit = player->GetSelectedUnit();
-
-									if (!unit)
+									if (GWARZ[LocId].vendor1_count == 0)
 									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a vendor1.|r", GWCOMM[guild_id].color_15.c_str());
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYou DONT have any vendor1's in this area.", GWCOMM[guild_id].color_15.c_str());
 									}
 
-									if (unit)
+									if (GWARZ[LocId].vendor1_count > 0)
 									{
-										if (unit->GetTypeId() != 3)
+										Unit *unit = player->GetSelectedUnit();
+
+										if (!unit)
 										{
 											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a vendor1.|r", GWCOMM[guild_id].color_15.c_str());
 										}
 
-										if (unit->GetTypeId() == 3)
+										if (unit)
 										{
-											if (unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].vendor1_id || unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].vendor1_id + 1)
+											if (unit->GetTypeId() != 3)
 											{
-												if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].vendor1_cost))
+												ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a vendor1.|r", GWCOMM[guild_id].color_15.c_str());
+											}
+
+											if (unit->GetTypeId() == 3)
+											{
+												if (unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].vendor1_id || unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].vendor1_id + 1)
 												{
-													unit->RemoveFromWorld();
-													unit->ToCreature()->DeleteFromDB();
+													if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].vendor1_cost))
+													{
+														unit->RemoveFromWorld();
+														unit->ToCreature()->DeleteFromDB();
 
-													UpdateGuildLocData("vendor1_count", ConvertNumberToString(GWARZ[LocId].vendor1_count - 1), LocId);
+														UpdateGuildLocData("vendor1_count", ConvertNumberToString(GWARZ[LocId].vendor1_count - 1), LocId);
 
-													std::string ann = pName + " has sold a vendor1 from location:" + str_LocId + ".";
+														std::string ann = pName + " has sold a vendor1 from location:" + str_LocId + ".";
 
-													SendGuildMessage(GWARZ[LocId].guild_id, ann);
+														SendGuildMessage(GWARZ[LocId].guild_id, ann);
 
-													ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vendor1_cost, Currencyname.c_str());
-													msg = GGW_MSG;
-												} //add currency
-											}//is id
-										} //type 3
-									} // found vendor1
-								} // has vendor1
-							} //vendor1
+														ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vendor1_cost, Currencyname.c_str());
+														msg = GGW_MSG;
+													} //add currency
+												}//is id
+											} //type 3
+										} // found vendor1
+									} // has vendor1
+								} //vendor1
 
-/*
--- **** Vendor 2 ****
-*/
+	/*
+	-- **** Vendor 2 ****
+	*/
 
-							if (ChatCache[2] == GWCOMM[guild_id].vendor2)
-							{
-								if (GWARZ[LocId].vendor2_count == 0)
+								if (ChatCache[2] == GWCOMM[guild_id].vendor2)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYou DONT have any vendor2's in this area.", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWARZ[LocId].vendor2_count > 0)
-								{
-									Unit *unit = player->GetSelectedUnit();
-
-									if (!unit)
+									if (GWARZ[LocId].vendor2_count == 0)
 									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a vendor2.|r", GWCOMM[guild_id].color_15.c_str());
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYou DONT have any vendor2's in this area.", GWCOMM[guild_id].color_15.c_str());
 									}
 
-									if (unit)
+									if (GWARZ[LocId].vendor2_count > 0)
 									{
-										if (unit->GetTypeId() != 3)
+										Unit *unit = player->GetSelectedUnit();
+
+										if (!unit)
 										{
 											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a vendor2.|r", GWCOMM[guild_id].color_15.c_str());
 										}
 
-										if (unit->GetTypeId() == 3)
+										if (unit)
 										{
-											if (unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].vendor2_id || unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].vendor2_id + 1)
+											if (unit->GetTypeId() != 3)
 											{
-												if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].vendor2_cost))
+												ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a vendor2.|r", GWCOMM[guild_id].color_15.c_str());
+											}
+
+											if (unit->GetTypeId() == 3)
+											{
+												if (unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].vendor2_id || unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].vendor2_id + 1)
 												{
-													unit->RemoveFromWorld();
-													unit->ToCreature()->DeleteFromDB();
+													if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].vendor2_cost))
+													{
+														unit->RemoveFromWorld();
+														unit->ToCreature()->DeleteFromDB();
 
-													UpdateGuildLocData("vendor2_count", ConvertNumberToString(GWARZ[LocId].vendor2_count - 1), LocId);
+														UpdateGuildLocData("vendor2_count", ConvertNumberToString(GWARZ[LocId].vendor2_count - 1), LocId);
 
-													std::string ann = pName + " has sold a vendor2 from location:" + str_LocId + ".";
+														std::string ann = pName + " has sold a vendor2 from location:" + str_LocId + ".";
 
-													SendGuildMessage(GWARZ[LocId].guild_id, ann);
+														SendGuildMessage(GWARZ[LocId].guild_id, ann);
 
-													ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vendor2_cost, Currencyname.c_str());
-													msg = GGW_MSG;
-												} //add currency
-											} // is id
-										} // type 3
-									} // found vendor2
-								} // has vendor2
-							} //vendor2
+														ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vendor2_cost, Currencyname.c_str());
+														msg = GGW_MSG;
+													} //add currency
+												} // is id
+											} // type 3
+										} // found vendor2
+									} // has vendor2
+								} //vendor2
 
-/*
--- **** Vendor 3 ****
-*/
+	/*
+	-- **** Vendor 3 ****
+	*/
 
-							if (ChatCache[2] == GWCOMM[guild_id].vendor3)
-							{
-								if (GWARZ[LocId].vendor3_count == 0)
+								if (ChatCache[2] == GWCOMM[guild_id].vendor3)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYou DONT have any vendor3's in this area.", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWARZ[LocId].vendor3_count > 0)
-								{
-									Unit *unit = player->GetSelectedUnit(); //  FindNearestCreature((GWCOMM[SERVER_GUILD_ID].pig_id || GWCOMM[SERVER_GUILD_ID].pig_id + 1), 0.5);
-
-									if (!unit)
+									if (GWARZ[LocId].vendor3_count == 0)
 									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a vendor3.|r", GWCOMM[guild_id].color_15.c_str());
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYou DONT have any vendor3's in this area.", GWCOMM[guild_id].color_15.c_str());
 									}
 
-									if (unit)
+									if (GWARZ[LocId].vendor3_count > 0)
 									{
-										if (unit->GetTypeId() != 3)
+										Unit *unit = player->GetSelectedUnit(); //  FindNearestCreature((GWCOMM[SERVER_GUILD_ID].pig_id || GWCOMM[SERVER_GUILD_ID].pig_id + 1), 0.5);
+
+										if (!unit)
 										{
 											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a vendor3.|r", GWCOMM[guild_id].color_15.c_str());
 										}
 
-										if (unit->GetTypeId() == 3)
+										if (unit)
 										{
-											if (unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].vendor3_id || unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].vendor3_id + 1)
+											if (unit->GetTypeId() != 3)
 											{
-												if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].vendor3_cost))
-												{
-													unit->RemoveFromWorld();
-													unit->ToCreature()->DeleteFromDB();
-
-													UpdateGuildLocData("vendor3_count", ConvertNumberToString(GWARZ[LocId].vendor3_count - 1), LocId);
-
-													std::string ann = pName + " has sold a vendor3 from location:" + str_LocId + ".";
-
-													SendGuildMessage(GWARZ[LocId].guild_id, ann);
-
-													ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vendor3_cost, Currencyname.c_str());
-													msg = GGW_MSG;
-												} //add currency
+												ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a vendor3.|r", GWCOMM[guild_id].color_15.c_str());
 											}
-										} // can add currency
-									} // found vendor3
-								} // has vendor3
-							} //vendor3
 
-/*
--- **** Cannon ****
-*/
+											if (unit->GetTypeId() == 3)
+											{
+												if (unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].vendor3_id || unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].vendor3_id + 1)
+												{
+													if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].vendor3_cost))
+													{
+														unit->RemoveFromWorld();
+														unit->ToCreature()->DeleteFromDB();
 
-							if (ChatCache[2] == GWCOMM[guild_id].cannon)
-							{
-								if (GWARZ[LocId].cannon_count == 0)
+														UpdateGuildLocData("vendor3_count", ConvertNumberToString(GWARZ[LocId].vendor3_count - 1), LocId);
+
+														std::string ann = pName + " has sold a vendor3 from location:" + str_LocId + ".";
+
+														SendGuildMessage(GWARZ[LocId].guild_id, ann);
+
+														ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vendor3_cost, Currencyname.c_str());
+														msg = GGW_MSG;
+													} //add currency
+												}
+											} // can add currency
+										} // found vendor3
+									} // has vendor3
+								} //vendor3
+
+	/*
+	-- **** Cannon ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].cannon)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYou DONT have any cannon's in this area.", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWARZ[LocId].cannon_count > 0)
-								{
-									Unit *unit = player->GetSelectedUnit();
-
-									if (!unit)
+									if (GWARZ[LocId].cannon_count == 0)
 									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a cannon.|r", GWCOMM[guild_id].color_15.c_str());
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYou DONT have any cannon's in this area.", GWCOMM[guild_id].color_15.c_str());
 									}
 
-									if (unit)
+									if (GWARZ[LocId].cannon_count > 0)
 									{
-										if (unit->GetTypeId() != 3)
+										Unit *unit = player->GetSelectedUnit();
+
+										if (!unit)
 										{
 											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a cannon.|r", GWCOMM[guild_id].color_15.c_str());
 										}
 
-										if (unit->GetTypeId() == 3)
+										if (unit)
 										{
-											if (unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].cannon_id || unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].cannon_id + 1)
+											if (unit->GetTypeId() != 3)
 											{
-												if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].cannon_cost))
-												{
-													unit->RemoveFromWorld();
-													unit->ToCreature()->DeleteFromDB();
-
-													UpdateGuildLocData("cannon_count", ConvertNumberToString(GWARZ[LocId].cannon_count - 1), LocId);
-
-													std::string ann = pName + " has sold a cannon from location:" + str_LocId + ".";
-
-													SendGuildMessage(GWARZ[LocId].guild_id, ann);
-
-													ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].cannon_cost, Currencyname.c_str());
-													msg = GGW_MSG;
-												} //add currency
+												ChatHandler(player->GetSession()).PSendSysMessage("%sYou must select a cannon.|r", GWCOMM[guild_id].color_15.c_str());
 											}
-										} // can add currency
-									} // found cannon
-								} // has cannon
-							} //cannon
 
-/*
--- **** Vault ****
-*/
+											if (unit->GetTypeId() == 3)
+											{
+												if (unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].cannon_id || unit->GetEntry() == GWCOMM[SERVER_GUILD_ID].cannon_id + 1)
+												{
+													if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].cannon_cost))
+													{
+														unit->RemoveFromWorld();
+														unit->ToCreature()->DeleteFromDB();
 
-							if (ChatCache[2] == GWCOMM[guild_id].vault)
-							{
-								if (GWARZ[LocId].vault_count == 0)
+														UpdateGuildLocData("cannon_count", ConvertNumberToString(GWARZ[LocId].cannon_count - 1), LocId);
+
+														std::string ann = pName + " has sold a cannon from location:" + str_LocId + ".";
+
+														SendGuildMessage(GWARZ[LocId].guild_id, ann);
+
+														ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].cannon_cost, Currencyname.c_str());
+														msg = GGW_MSG;
+													} //add currency
+												}
+											} // can add currency
+										} // found cannon
+									} // has cannon
+								} //cannon
+
+	/*
+	-- **** Vault ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].vault)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYour guild does not own a vault at this location.", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWARZ[LocId].vault_count > 0)
-								{
-									GameObject *go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].vault_id, 5);
-
-									if (!go)
+									if (GWARZ[LocId].vault_count == 0)
 									{
-										go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].vault_id + 1, 5);
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYour guild does not own a vault at this location.", GWCOMM[guild_id].color_15.c_str());
 									}
 
-									if (!go)
+									if (GWARZ[LocId].vault_count > 0)
 									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must stand closer to a vault.|r", GWCOMM[guild_id].color_15.c_str());
-									}
+										GameObject *go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].vault_id, 5);
 
-									if (go)
-									{
-										if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].vault_cost))
+										if (!go)
 										{
-											go->ToGameObject()->RemoveFromWorld();
-											go->ToGameObject()->DeleteFromDB();
+											go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].vault_id + 1, 5);
+										}
 
-											UpdateGuildLocData("vault_count", ConvertNumberToString(GWARZ[LocId].vault_count - 1), LocId);
-
-											std::string ann = pName + " has sold a vault from location:" + str_LocId + ".";
-
-											SendGuildMessage(GWARZ[LocId].guild_id, ann);
-
-											ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vault_cost, Currencyname.c_str());
-											msg = GGW_MSG;
-										} // can add currency
-									}
-								} // has vault
-							} // vault
-
-/*
--- **** MailBox ****
-*/
-
-							if (ChatCache[2] == GWCOMM[guild_id].mailbox)
-							{
-								if (GWARZ[LocId].mailbox_count == 0)
-								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sYour guild does not own a mailbox at this location.", GWCOMM[guild_id].color_15.c_str());
-								}
-
-								if (GWARZ[LocId].mailbox_count > 0)
-								{
-									GameObject *go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].mailbox_id, 5);
-
-									if (!go)
-									{
-										go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].mailbox_id + 1, 5);
-									}
-
-									if (!go)
-									{
-										ChatHandler(player->GetSession()).PSendSysMessage("%sYou must stand closer to a mailbox.|r", GWCOMM[guild_id].color_15.c_str());
-									}
-
-									if (go)
-									{
-										if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].mailbox_cost))
+										if (!go)
 										{
-											go->ToGameObject()->RemoveFromWorld();
-											go->ToGameObject()->DeleteFromDB();
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must stand closer to a vault.|r", GWCOMM[guild_id].color_15.c_str());
+										}
 
-											UpdateGuildLocData("mailbox_count", ConvertNumberToString(GWARZ[LocId].mailbox_count - 1), LocId);
+										if (go)
+										{
+											if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].vault_cost))
+											{
+												go->ToGameObject()->RemoveFromWorld();
+												go->ToGameObject()->DeleteFromDB();
 
-											std::string ann = pName + " has sold a mailbox from location:" + str_LocId + ".";
+												UpdateGuildLocData("vault_count", ConvertNumberToString(GWARZ[LocId].vault_count - 1), LocId);
 
-											SendGuildMessage(GWARZ[LocId].guild_id, ann);
+												std::string ann = pName + " has sold a vault from location:" + str_LocId + ".";
 
-											ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].mailbox_cost, Currencyname.c_str());
-											msg = GGW_MSG;
-										} // can add currency
+												SendGuildMessage(GWARZ[LocId].guild_id, ann);
+
+												ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].vault_cost, Currencyname.c_str());
+												msg = GGW_MSG;
+											} // can add currency
+										}
+									} // has vault
+								} // vault
+
+	/*
+	-- **** MailBox ****
+	*/
+
+								if (ChatCache[2] == GWCOMM[guild_id].mailbox)
+								{
+									if (GWARZ[LocId].mailbox_count == 0)
+									{
+										ChatHandler(player->GetSession()).PSendSysMessage("%sYour guild does not own a mailbox at this location.", GWCOMM[guild_id].color_15.c_str());
 									}
-								} // has mailbox
-							} // mailbox
-						} // is owned by player's guild
-					} // NOT in GM mode
+
+									if (GWARZ[LocId].mailbox_count > 0)
+									{
+										GameObject *go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].mailbox_id, 5);
+
+										if (!go)
+										{
+											go = player->FindNearestGameObject(GWCOMM[SERVER_GUILD_ID].mailbox_id + 1, 5);
+										}
+
+										if (!go)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sYou must stand closer to a mailbox.|r", GWCOMM[guild_id].color_15.c_str());
+										}
+
+										if (go)
+										{
+											if (player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].mailbox_cost))
+											{
+												go->ToGameObject()->RemoveFromWorld();
+												go->ToGameObject()->DeleteFromDB();
+
+												UpdateGuildLocData("mailbox_count", ConvertNumberToString(GWARZ[LocId].mailbox_count - 1), LocId);
+
+												std::string ann = pName + " has sold a mailbox from location:" + str_LocId + ".";
+
+												SendGuildMessage(GWARZ[LocId].guild_id, ann);
+
+												ChatHandler(player->GetSession()).PSendSysMessage("+%u %s's.|r", GWCOMM[SERVER_GUILD_ID].mailbox_cost, Currencyname.c_str());
+												msg = GGW_MSG;
+											} // can add currency
+										}
+									} // has mailbox
+								} // mailbox
+							} // is owned by player's guild
+						} // NOT in GM mode
+					}// allowed to buy/sell
+					else
+					{
+						if (GuildLeaderGUID == pGuid)
+							ChatHandler(player->GetSession()).PSendSysMessage("<%sGrumbo|r>:%sSpeak With Your faction Leader to gain access to ownership and development.", GWCOMM[guild_id].color_1.c_str(), GWCOMM[guild_id].color_1.c_str());
+						else 
+							ChatHandler(player->GetSession()).PSendSysMessage("<%sGrumbo|r>:%sRemind your Guild Leader to Speak With Your faction Leader to gain access to ownership and development.", GWCOMM[guild_id].color_1.c_str(), GWCOMM[guild_id].color_1.c_str());
+					}
+					msg = GGW_MSG;
 				} // is sell command
 /*
 -- ****************************************************
@@ -3897,7 +3942,8 @@ public: GGW_commands() : PlayerScript("GGW_commands"){ };
 
 class GGW_GUILD_FLAG : public GameObjectScript
 {
-public: GGW_GUILD_FLAG() : GameObjectScript("GGW_GUILD_FLAG"){ }
+public: 
+	GGW_GUILD_FLAG() : GameObjectScript("GGW_GUILD_FLAG"){ }
 
 		bool OnGossipHello(Player* player, GameObject* go) override // virtual
 		{
@@ -3905,10 +3951,11 @@ public: GGW_GUILD_FLAG() : GameObjectScript("GGW_GUILD_FLAG"){ }
 			Map* Pmap = player->GetMap();
 
 			uint32 GGW_player_phase_mask_for_spawn = player->GetPhaseMaskForSpawn();
-			uint8 GGW_map_spawn_mode = Pmap->GetSpawnMode();
+			//uint8 GGW_map_spawn_mode = Pmap->GetSpawnMode();
 
 			std::string pName = player->GetName();
 			uint8 pTeam_id = player->GetTeamId();
+			uint32 pGuid = player->GetGUID();
 
 			uint32 map_id = player->GetMapId();
 			uint32 area_id = player->GetAreaId();
@@ -3937,7 +3984,7 @@ public: GGW_GUILD_FLAG() : GameObjectScript("GGW_GUILD_FLAG"){ }
 
 			uint32 gGuid = go->GetSpawnId();
 
-			/*if (test) {*/  ChatHandler(player->GetSession()).PSendSysMessage("FLAG_TAG_EVENT triggered"); //};
+			if (test) { ChatHandler(player->GetSession()).PSendSysMessage("FLAG_TAG_EVENT triggered"); };
 
 			if (gGuid != GWARZ[LocId].flag_id)
 			{
@@ -3955,92 +4002,102 @@ public: GGW_GUILD_FLAG() : GameObjectScript("GGW_GUILD_FLAG"){ }
 			}
 			else
 			{
-
 				if (guild)
 				{
-					if (test){ TC_LOG_INFO("server.loading", "GUILD:true"); };
+						if (test){ TC_LOG_INFO("server.loading", "GUILD:true"); };
 
 					uint32 guild_id = player->GetGuildId();
 					std::string guild_name = guild->GetName();
 					uint8 pGuildRank = player->GetRank();
 					uint8 pGMRank = player->GetSession()->GetSecurity();
+					uint32 GuildLeaderGUID = guild->GetLeaderGUID();
 
-					if (guild_id == loc_guild_id || (GWCOMM[SERVER_GUILD_ID].anarchy == 0 && pTeam_id == GWARZ[LocId].team))
-					{
-
-						if (GWARZ[LocId].team == 0) ChatHandler(player->GetSession()).PSendSysMessage("%s%s|r own's this location.", GWCOMM[SERVER_GUILD_ID].color_4.c_str(), GWARZ[LocId].guild_name.c_str());
-						if (GWARZ[LocId].team == 1) ChatHandler(player->GetSession()).PSendSysMessage("%s%s|r own's this location.", GWCOMM[guild_id].color_5.c_str(), GWARZ[LocId].guild_name.c_str());
-
-						ChatHandler(player->GetSession()).PSendSysMessage("%sGrumbo'z Guild Warz System.|r", GWCOMM[SERVER_GUILD_ID].color_10.c_str());
-						return true;
-					}
-
-					if (pTeam_id != GWARZ[LocId].team || (GWCOMM[SERVER_GUILD_ID].anarchy == 1 && guild_id != loc_guild_id))
-					{
-						if (total_flag_spawn_time > curr_time && GWCOMM[SERVER_GUILD_ID].f_timer == 1)
+						if (GWCOMM[guild_id].allowed >= 1)
 						{
-							ChatHandler(player->GetSession()).PSendSysMessage("%s!!..Cooldown Timer in Affect..!!|r", GWCOMM[SERVER_GUILD_ID].color_15.c_str());
-							return true;
-						}
-
-						if (total_flag_spawn_time <= curr_time || GWCOMM[SERVER_GUILD_ID].f_timer == 0)
-						{
-							if (GWCOMM[SERVER_GUILD_ID].flag_require == 1 && GWARZ[LocId].guard_count > 0)
+							if (guild_id == loc_guild_id || (GWCOMM[SERVER_GUILD_ID].anarchy == 0 && pTeam_id == GWARZ[LocId].team))
 							{
-								ChatHandler(player->GetSession()).PSendSysMessage("%s!!..You must clear ALL guards..!!|r", GWCOMM[SERVER_GUILD_ID].color_15.c_str());
+
+								if (GWARZ[LocId].team == 0) ChatHandler(player->GetSession()).PSendSysMessage("%s%s|r own's this location.", GWCOMM[SERVER_GUILD_ID].color_4.c_str(), GWARZ[LocId].guild_name.c_str());
+								if (GWARZ[LocId].team == 1) ChatHandler(player->GetSession()).PSendSysMessage("%s%s|r own's this location.", GWCOMM[guild_id].color_5.c_str(), GWARZ[LocId].guild_name.c_str());
+
+								ChatHandler(player->GetSession()).PSendSysMessage("%sGrumbo'z Guild Warz System.|r", GWCOMM[SERVER_GUILD_ID].color_10.c_str());
 								return true;
 							}
 
-							if (GWARZ[LocId].guard_count == 0 || GWCOMM[SERVER_GUILD_ID].flag_require == 0)
+							if (pTeam_id != GWARZ[LocId].team || (GWCOMM[SERVER_GUILD_ID].anarchy == 1 && guild_id != loc_guild_id))
 							{
-
-								uint32 spawnflag = SpawnGuildObjects(2, GWCOMM[SERVER_GUILD_ID].flag_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
-
-								if (!spawnflag)
+								if (total_flag_spawn_time > curr_time && GWCOMM[SERVER_GUILD_ID].f_timer == 1)
 								{
-									ChatHandler(player->GetSession()).PSendSysMessage("%sflag spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+									ChatHandler(player->GetSession()).PSendSysMessage("%s!!..Cooldown Timer in Affect..!!|r", GWCOMM[SERVER_GUILD_ID].color_15.c_str());
+									return true;
 								}
 
-								if (spawnflag)
+								if (total_flag_spawn_time <= curr_time || GWCOMM[SERVER_GUILD_ID].f_timer == 0)
 								{
-									go->RemoveFromWorld();
-									go->DeleteFromDB();
+									if (GWCOMM[SERVER_GUILD_ID].flag_require == 1 && GWARZ[LocId].guard_count > 0)
+									{
+										ChatHandler(player->GetSession()).PSendSysMessage("%s!!..You must clear ALL guards..!!|r", GWCOMM[SERVER_GUILD_ID].color_15.c_str());
+										return true;
+									}
 
-									UpdateGuildLocData("guild_name", guild_name, LocId);
-									UpdateGuildLocData("guild_id", ConvertNumberToString(guild_id), LocId);
-									UpdateGuildLocData("team", ConvertNumberToString(pTeam_id), LocId);
+									if (GWARZ[LocId].guard_count == 0 || GWCOMM[SERVER_GUILD_ID].flag_require == 0)
+									{
 
-									UpdateGuildLocData("flag_id", ConvertNumberToString(spawnflag), LocId);
-									UpdateGuildLocData("fs_time", ConvertNumberToString(sWorld->GetGameTime()), LocId);
+										uint32 spawnflag = SpawnGuildObjects(2, GWCOMM[SERVER_GUILD_ID].flag_id, pTeam_id, guild_id, Pmap, pX, pY, pZ, pO, player, LocId);
 
-									UpdateGuildLocFloat(pX, pY, pZ, LocId);
+										if (!spawnflag)
+										{
+											ChatHandler(player->GetSession()).PSendSysMessage("%sflag spawn error..|r", GWCOMM[guild_id].color_15.c_str());
+										}
 
-									std::string ann = pName + " has taken location:" + str_LocId + " from ";
+										if (spawnflag)
+										{
+											go->RemoveFromWorld();
+											go->DeleteFromDB();
 
-									if (loc_guild_team == 0) ann += (GWCOMM[SERVER_GUILD_ID].color_4 + loc_guild_name + ".");
-									if (loc_guild_team == 1) ann += (GWCOMM[SERVER_GUILD_ID].color_5 + loc_guild_name + ".");
+											UpdateGuildLocData("guild_name", guild_name, LocId);
+											UpdateGuildLocData("guild_id", ConvertNumberToString(guild_id), LocId);
+											UpdateGuildLocData("team", ConvertNumberToString(pTeam_id), LocId);
 
-									SendGuildMessage(GWARZ[LocId].guild_id, ann);
+											UpdateGuildLocData("flag_id", ConvertNumberToString(spawnflag), LocId);
+											UpdateGuildLocData("fs_time", ConvertNumberToString(sWorld->GetGameTime()), LocId);
 
-									if (GUILDWARZ_RANK_TYPE > 1){ CreateRankList(); };
+											UpdateGuildLocFloat(pX, pY, pZ, LocId);
 
-									return false;
-								} // is spawned
+											std::string ann = pName + " has taken location:" + str_LocId + " from ";
+
+											if (loc_guild_team == 0) ann += (GWCOMM[SERVER_GUILD_ID].color_4 + loc_guild_name + ".");
+											if (loc_guild_team == 1) ann += (GWCOMM[SERVER_GUILD_ID].color_5 + loc_guild_name + ".");
+
+											SendGuildMessage(GWARZ[LocId].guild_id, ann);
+
+											if (GUILDWARZ_RANK_TYPE > 1) { CreateRankList(); };
+
+											return false;
+										} // is spawned
+									}
+								}
 							}
+						}// is allowed
+						else
+						{
+							if (GuildLeaderGUID == pGuid)
+								ChatHandler(player->GetSession()).PSendSysMessage("<%sGrumbo|r>:%sSpeak With Your faction Leader to gain access to ownership and development.", GWCOMM[guild_id].color_1.c_str(), GWCOMM[guild_id].color_1.c_str());
+							else
+								ChatHandler(player->GetSession()).PSendSysMessage("<%sGrumbo|r>:%sRemind your Guild Leader to Speak With Your faction Leader to gain access to ownership and development.", GWCOMM[guild_id].color_1.c_str(), GWCOMM[guild_id].color_1.c_str());
 						}
-					}
 				}
 				else
 				{
 					if (test){ TC_LOG_INFO("server.loading", "GUILD:false"); };
 
-					if (GWCOMM[GWARZ[LocId].guild_id].guild_invite == 0 || pTeam_id != GWARZ[LocId].team)
+					if(pTeam_id != GWARZ[LocId].team)
 					{
 						ChatHandler(player->GetSession()).PSendSysMessage("%sGrumbo'z Guild Warz System:|r", GWCOMM[SERVER_GUILD_ID].color_1.c_str());
 						ChatHandler(player->GetSession()).PSendSysMessage("%s%s own's this location %s.|r", GWCOMM[SERVER_GUILD_ID].color_1.c_str(), GWARZ[LocId].guild_name.c_str(), pName.c_str());
 						ChatHandler(player->GetSession()).PSendSysMessage("%sJoin a Guild to participate in Grumbo'z Guild Warz System.|r", GWCOMM[SERVER_GUILD_ID].color_1.c_str());
 
-						if (pTeam_id == GWARZ[LocId].team) 
+						if ((pTeam_id == GWARZ[LocId].team) && (GWCOMM[GWARZ[LocId].guild_id].guild_invite == 0))
 						{ 
 							ChatHandler(player->GetSession()).PSendSysMessage("%sThis Guild Master has disabled the guild's auto invite system.|r", GWCOMM[SERVER_GUILD_ID].color_11.c_str()); 
 						};
@@ -4051,25 +4108,27 @@ public: GGW_GUILD_FLAG() : GameObjectScript("GGW_GUILD_FLAG"){ }
 						return false;
 					}
 
-					if (GWCOMM[loc_guild_id].guild_invite == 1 && pTeam_id == GWARZ[LocId].team)
+					if(pTeam_id == GWARZ[LocId].team)
 					{
-						if (test) { ChatHandler(player->GetSession()).PSendSysMessage("TAG EVENT 1"); };
+							if (test) { ChatHandler(player->GetSession()).PSendSysMessage("TAG EVENT 1"); };
 
 						std::string join = GWCOMM[SERVER_GUILD_ID].color_9 + "Join the Guild `";
 						
-						if (GWARZ[LocId].team == 0) join += GWCOMM[SERVER_GUILD_ID].color_4 + GWARZ[LocId].guild_name + GWCOMM[SERVER_GUILD_ID].color_9 + "|r`.";
-						if (GWARZ[LocId].team == 1) join += GWCOMM[SERVER_GUILD_ID].color_5 + GWARZ[LocId].guild_name + GWCOMM[SERVER_GUILD_ID].color_9 + "|r`.";
+							if (GWARZ[LocId].team == 0) join += GWCOMM[SERVER_GUILD_ID].color_4 + GWARZ[LocId].guild_name + GWCOMM[SERVER_GUILD_ID].color_9 + "|r`.";
+							if (GWARZ[LocId].team == 1) join += GWCOMM[SERVER_GUILD_ID].color_5 + GWARZ[LocId].guild_name + GWCOMM[SERVER_GUILD_ID].color_9 + "|r`.";
 
 						std::string ranked = GWCOMM[SERVER_GUILD_ID].color_9 + "Ranked #" + ConvertNumberToString(GetRank(GWARZ[LocId].guild_id)) + ".";
 						std::string total_locations = GWCOMM[SERVER_GUILD_ID].color_9 + "Control " + ConvertNumberToString(CalculateTotalLocations(GWARZ[LocId].guild_id)) + " Locations.";
 						std::string total_value = GWCOMM[SERVER_GUILD_ID].color_9 + "Total wealth of " + ConvertNumberToString(CalculateTotalLocationsValue(GWARZ[LocId].guild_id)) + " " + Currencyname + "'s.";
 
-						player->ADD_GOSSIP_ITEM(1, join, GOSSIP_SENDER_MAIN, 1);
-						player->ADD_GOSSIP_ITEM(1, ranked, GOSSIP_SENDER_MAIN, 3);
-						player->ADD_GOSSIP_ITEM(1, total_locations, GOSSIP_SENDER_MAIN, 3);
-						player->ADD_GOSSIP_ITEM(1, total_value, GOSSIP_SENDER_MAIN, 3);
-						player->ADD_GOSSIP_ITEM(1, "Nevermind", GOSSIP_SENDER_MAIN, 2);
-						player->SEND_GOSSIP_MENU(1, go->GetGUID());
+							if (GWCOMM[loc_guild_id].guild_invite == 1) { AddGossipItemFor(player, 1, join, GOSSIP_SENDER_MAIN, 1); };
+
+						AddGossipItemFor(player, 1, ranked, GOSSIP_SENDER_MAIN, 3);
+						AddGossipItemFor(player, 1, total_locations, GOSSIP_SENDER_MAIN, 3);
+						AddGossipItemFor(player, 1, total_value, GOSSIP_SENDER_MAIN, 3);
+						AddGossipItemFor(player, 1, "Nevermind", GOSSIP_SENDER_MAIN, 2);
+
+						SendGossipMenuFor(player, 1, go->GetGUID());
 
 						return true;
 
@@ -4095,15 +4154,16 @@ public: GGW_GUILD_FLAG() : GameObjectScript("GGW_GUILD_FLAG"){ }
 			Guild *guild = sGuildMgr->GetGuildById(GWARZ[LocId].guild_id);
 			uint32 guild_id = GWARZ[LocId].guild_id;
 
-			player->PlayerTalkClass->ClearMenus();
+			ClearGossipMenuFor(player);
 
-			player->CLOSE_GOSSIP_MENU();
+			CloseGossipMenuFor(player);
 
 			switch (actions)
 			{
 				case 1:
 				{
-					guild->AddMember(player->GetGUID(), MAX_GUILD_RANKS);
+					SQLTransaction trans(nullptr);
+					guild->AddMember(trans, player->GetGUID(), MAX_GUILD_RANKS);
 
 					std::string ann = GWCOMM[guild_id].color_1 + player->GetName() + " Has Joined the Guild via the 'Guild Warz Guild Invite System'.";
 
@@ -4205,6 +4265,7 @@ public: GGW_GUILD_VAULT() : GameObjectScript("GGW_GUILD_VAULT"){ }
 
 		bool OnGossipHello(Player* player, GameObject* go) // This will show first when a player clicks on a GameObject (Gossip)
 		{
+			TC_LOG_INFO("server.loading", "GUILD_VAULT_TRIGGER_1");
 			uint32 GoId = go->GetEntry();
 			uint32 map_id = go->GetMapId();
 			uint32 area_id = go->GetAreaId();
@@ -4541,6 +4602,8 @@ public: GGW_GUILD_VENDOR1() : CreatureScript("GGW_GUILD_VENDOR1"){ }
 
 	bool OnGossipHello(Player* player, Creature* creature) // override // virtual 
 	{
+		TC_LOG_INFO("server.loading", "GUILD_VENDOR1_TRIGGER_1");
+
 		if (vendor1)
 		{
 			uint32 map_id = creature->GetMapId();
@@ -4554,7 +4617,7 @@ public: GGW_GUILD_VENDOR1() : CreatureScript("GGW_GUILD_VENDOR1"){ }
 
 				if (pGuild_id != lGuild_id)
 				{
-					player->CLOSE_GOSSIP_MENU();
+					CloseGossipMenuFor(player);
 
 					creature->Yell("You're gonna !Die! Scum!", LANG_UNIVERSAL, player);
 
@@ -4564,12 +4627,12 @@ public: GGW_GUILD_VENDOR1() : CreatureScript("GGW_GUILD_VENDOR1"){ }
 
 				for (const auto& buffNames : VENDOR1_BUFF_NAMES)
 				{
-					player->ADD_GOSSIP_ITEM(1, buffNames, GOSSIP_SENDER_MAIN, int_id);
+					AddGossipItemFor(player, 1, buffNames, GOSSIP_SENDER_MAIN, int_id);
 					int_id++;
 				}
 
-			player->ADD_GOSSIP_ITEM(1, "Nevermind.", GOSSIP_SENDER_MAIN, int_id + 1);
-			player->SEND_GOSSIP_MENU(1, creature->GetGUID());
+			AddGossipItemFor(player, 1, "Nevermind.", GOSSIP_SENDER_MAIN, int_id + 1);
+			SendGossipMenuFor(player, 1, creature->GetGUID());
 
 		}
 		return true;
@@ -4582,7 +4645,7 @@ public: GGW_GUILD_VENDOR1() : CreatureScript("GGW_GUILD_VENDOR1"){ }
 			player->AddAura(VENDOR1_BUFF_IDS[actions], player);
 		}
 
-		player->CLOSE_GOSSIP_MENU();
+		CloseGossipMenuFor(player);
 
 		return true;
 	}
@@ -4638,93 +4701,97 @@ class GGW_GUILD_VENDOR2 : public CreatureScript
 {
 public: GGW_GUILD_VENDOR2() : CreatureScript("GGW_GUILD_VENDOR2"){ }
 
-		bool OnGossipHello(Player* player, Creature* creature)
+	bool OnGossipHello(Player* player, Creature* creature)
+	{
+		if (test) { TC_LOG_INFO("server.loading", "GUILD_VENDOR2_TRIGGER_1"); };
+
+		if (vendor2)
 		{
-			if (vendor2)
+			uint32 map_id = creature->GetMapId();
+			uint32 area_id = creature->GetAreaId();
+			uint32 zone_id = creature->GetZoneId();
+
+			uint32 LocId = GetLocationID(map_id, area_id, zone_id);
+
+			uint32 lGuild_id = GWARZ[LocId].guild_id;
+			uint32 pGuild_id = player->GetGuildId();
+
+			if (pGuild_id != lGuild_id)
 			{
-				uint32 map_id = creature->GetMapId();
-				uint32 area_id = creature->GetAreaId();
-				uint32 zone_id = creature->GetZoneId();
+				CloseGossipMenuFor(player);
 
-				uint32 LocId = GetLocationID(map_id, area_id, zone_id);
+				creature->Yell("You're gonna !Die! Scum!", LANG_UNIVERSAL, player);
 
-				uint32 lGuild_id = GWARZ[LocId].guild_id;
-				uint32 pGuild_id = player->GetGuildId();
-
-				if (pGuild_id != lGuild_id)
-				{
-					player->CLOSE_GOSSIP_MENU();
-
-					creature->Yell("You're gonna !Die! Scum!", LANG_UNIVERSAL, player);
-
-					return false;
-				}
-				return true;
+				return false;
 			}
-			return true;
+		}
+		return true;
+	}
+
+	bool OnGossipSelect(Player* player, Creature* creature, uint32 /* sender */, uint32 actions)
+	{
+//		sObjectMgr->AddVendorItem(1, 100, 0, 0, 0, true);
+//		sObjectMgr->AddVendorItem(1, 101, 0, 0, 0, true);
+
+		return true;
+	}
+
+	struct GGW_Guild_Vendor2_AI : public ScriptedAI
+	{
+		GGW_Guild_Vendor2_AI(Creature* creature) : ScriptedAI(creature) { }
+
+		void reset()
+		{
+			Creature *creature = me;
+
+			creature->SetFullHealth();
+
 		}
 
-		bool OnGossipSelect(Player* player, Creature* creature, uint32 /* sender */, uint32 actions)
+		void EnterCombat(Unit* unit)
 		{
-			return true;
+			Creature *creature = me;
+
+			creature->SetPvP(false);
+			creature->ClearInCombat();
+			creature->SendClearTarget();
+			SetCombatMovement(false);
 		}
 
-		struct GGW_Guild_Vendor2_AI : public ScriptedAI
+		void MoveInLineOfSight(Unit* unit) override
 		{
-			GGW_Guild_Vendor2_AI(Creature* creature) : ScriptedAI(creature) { }
+			Creature *creature = me;
 
-			void reset()
+			uint32 cGuid = creature->GetSpawnId();
+
+			uint32 map_id = creature->GetMapId();
+			uint32 area_id = creature->GetAreaId();
+			uint32 zone_id = creature->GetZoneId();
+
+			uint32 LocId = GetLocationID(map_id, area_id, zone_id);
+
+			if (unit->ToPlayer())
 			{
-				Creature *creature = me;
+				Player* player = unit->ToPlayer();
 
-				creature->SetFullHealth();
-
-			}
-
-			void EnterCombat(Unit* unit)
-			{
-				Creature *creature = me;
-
-				creature->SetPvP(false);
-				creature->ClearInCombat();
-				creature->SendClearTarget();
-				SetCombatMovement(false);
-			}
-
-			void MoveInLineOfSight(Unit* unit) override
-			{
-				Creature *creature = me;
-
-				uint32 cGuid = creature->GetSpawnId();
-
-				uint32 map_id = creature->GetMapId();
-				uint32 area_id = creature->GetAreaId();
-				uint32 zone_id = creature->GetZoneId();
-
-				uint32 LocId = GetLocationID(map_id, area_id, zone_id);
-
-				if (unit->ToPlayer())
+				if (unit->ToPlayer()->GetGuildId())
 				{
-					Player* player = unit->ToPlayer();
-
-					if (unit->ToPlayer()->GetGuildId())
-					{
-						FactionReset(player);
-					}
-
-					if ((creature->GetEntry() + GWARZ[LocId].team) != GWCOMM[SERVER_GUILD_ID].vendor2_id)
-					{
-						UpdateCreature(creature, GWCOMM[SERVER_GUILD_ID].vendor2_id, LocId);
-					}
+					FactionReset(player);
 				}
-				ScriptedAI::MoveInLineOfSight(unit);
+
+				if ((creature->GetEntry() + GWARZ[LocId].team) != GWCOMM[SERVER_GUILD_ID].vendor2_id)
+				{
+					UpdateCreature(creature, GWCOMM[SERVER_GUILD_ID].vendor2_id, LocId);
+				}
 			}
-		};
+			ScriptedAI::MoveInLineOfSight(unit);
+		}
+	};
 		
-		CreatureAI* GetAI(Creature* creature)const override
-		{
-			return new GGW_Guild_Vendor2_AI(creature);
-		}
+	CreatureAI* GetAI(Creature* creature)const override
+	{
+		return new GGW_Guild_Vendor2_AI(creature);
+	}
 };
 
 class GGW_GUILD_VENDOR3 : public CreatureScript
@@ -4733,6 +4800,8 @@ public: GGW_GUILD_VENDOR3() : CreatureScript("GGW_GUILD_VENDOR3"){ }
 
 		bool OnGossipHello(Player* player, Creature* creature)
 		{
+			TC_LOG_INFO("server.loading", "GUILD_VENDOR3_TRIGGER_1");
+
 			if (vendor3)
 			{
 				uint32 map_id = creature->GetMapId();
@@ -4746,7 +4815,7 @@ public: GGW_GUILD_VENDOR3() : CreatureScript("GGW_GUILD_VENDOR3"){ }
 
 				if (pGuild_id != lGuild_id)
 				{
-					player->CLOSE_GOSSIP_MENU();
+					CloseGossipMenuFor(player);
 
 					creature->Yell("You're gonna !Die! Scum!", LANG_UNIVERSAL, player);
 
@@ -4836,7 +4905,7 @@ public: GGW_GUILD_CANNON() : CreatureScript("GGW_GUILD_CANNON"){ }
 
 			if (pGuild_id != lGuild_id)
 			{
-				player->CLOSE_GOSSIP_MENU();
+				CloseGossipMenuFor(player);
 
 				creature->Yell("You're gonna !Die! Scum!", LANG_UNIVERSAL, player);
 
@@ -4912,16 +4981,16 @@ public: GGW_GUILD_INFO_STATION() : CreatureScript("GGW_GUILD_INFO_STATION"){ }
 			uint32 guild_id = player->GetGuild()->GetId();
 			uint32 player_guild_rank = player->GetRank();
 
-			player->ADD_GOSSIP_ITEM(1, "About Grumbo'z Guild Warz.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
+			AddGossipItemFor(player, 1, "About Grumbo'z Guild Warz.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
 
-			player->ADD_GOSSIP_ITEM(1, "about the flags...", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1003);
+			AddGossipItemFor(player, 1, "about the flags...", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1003);
 
-			if (player_guild_rank >= GWCOMM[guild_id].GLD_lvlb){ player->ADD_GOSSIP_ITEM(1, "buy", GOSSIP_SENDER_MAIN, 1004); };
+			if (player_guild_rank >= GWCOMM[guild_id].GLD_lvlb){ AddGossipItemFor(player, 1, "buy", GOSSIP_SENDER_MAIN, 1004); };
 
-			if (player_guild_rank >= GWCOMM[guild_id].GLD_lvls){ player->ADD_GOSSIP_ITEM(1, "sell", GOSSIP_SENDER_MAIN, 1005); };
+			if (player_guild_rank >= GWCOMM[guild_id].GLD_lvls){ AddGossipItemFor(player, 1, "sell", GOSSIP_SENDER_MAIN, 1005); };
 
-			player->ADD_GOSSIP_ITEM(1, "Nevermind.", GOSSIP_SENDER_MAIN, 1000);
-			player->SEND_GOSSIP_MENU(1, creature->GetGUID());
+			AddGossipItemFor(player, 1, "Nevermind.", GOSSIP_SENDER_MAIN, 1000);
+			SendGossipMenuFor(player, 1, creature->GetGUID());
 
 			return true;
 		}
@@ -4935,11 +5004,11 @@ public: GGW_GUILD_INFO_STATION() : CreatureScript("GGW_GUILD_INFO_STATION"){ }
 			switch (actions)
 			{
 				case GOSSIP_ACTION_INFO_DEF + 1000:
-					player->CLOSE_GOSSIP_MENU();
+					CloseGossipMenuFor(player);
 				break;
 
 				case GOSSIP_ACTION_INFO_DEF + 1001:
-					player->CLOSE_GOSSIP_MENU();
+					CloseGossipMenuFor(player);
 					OnGossipHello(player, creature);
 				break;
 
@@ -4947,52 +5016,52 @@ public: GGW_GUILD_INFO_STATION() : CreatureScript("GGW_GUILD_INFO_STATION"){ }
 
 					TC_LOG_INFO("server.loading", "ABOUT System");
 					
-					player->ADD_GOSSIP_ITEM(10, "Welcome to Grumbo'z Guild Warz.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
-					player->ADD_GOSSIP_ITEM(10, "An aggresive Guild Plot System.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
-					player->ADD_GOSSIP_ITEM(10, "This allows Guilds to buy many plots, invade apposing Guild plots,", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
+					AddGossipItemFor(player, 10, "Welcome to Grumbo'z Guild Warz.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
+					AddGossipItemFor(player, 10, "An aggresive Guild Plot System.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
+					AddGossipItemFor(player, 10, "This allows Guilds to buy many plots, invade apposing Guild plots,", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
 
 						if (GWCOMM[SERVER_GUILD_ID].anarchy == 1)
 						{
-							player->ADD_GOSSIP_ITEM(10, "this is to include your own team Guild's.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
-							player->ADD_GOSSIP_ITEM(10, "You can invade any other Guild location of either team.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
-							player->ADD_GOSSIP_ITEM(10, "Becoming the most feared Guild in the realm..", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
+							AddGossipItemFor(player, 10, "this is to include your own team Guild's.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
+							AddGossipItemFor(player, 10, "You can invade any other Guild location of either team.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
+							AddGossipItemFor(player, 10, "Becoming the most feared Guild in the realm..", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
 						}
 
-					player->ADD_GOSSIP_ITEM(10, "Expanding your Guild's land cutting a path deep ", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
-					player->ADD_GOSSIP_ITEM(10, "into enemy territory. Build them up with farms to support pigs for proffit", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
-					player->ADD_GOSSIP_ITEM(10, " and barracks to support guards.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
-					player->ADD_GOSSIP_ITEM(10, "You can add a Guild Hall at every location for your Guildies to chill in.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
-					player->ADD_GOSSIP_ITEM(10, "Nevermind.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1001);
+					AddGossipItemFor(player, 10, "Expanding your Guild's land cutting a path deep ", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
+					AddGossipItemFor(player, 10, "into enemy territory. Build them up with farms to support pigs for proffit", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
+					AddGossipItemFor(player, 10, " and barracks to support guards.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
+					AddGossipItemFor(player, 10, "You can add a Guild Hall at every location for your Guildies to chill in.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1002);
+					AddGossipItemFor(player, 10, "Nevermind.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1001);
 
-					player->SEND_GOSSIP_MENU(1, creature->GetGUID());
+					SendGossipMenuFor(player, 1, creature->GetGUID());
 
 				break;
 
 				case GOSSIP_ACTION_INFO_DEF + 1003:
-					player->PlayerTalkClass->ClearMenus();
+					ClearGossipMenuFor(player);
 
-					player->ADD_GOSSIP_ITEM(1, "Welcome to Grumbo'z Guild Warz.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1010);
-					player->ADD_GOSSIP_ITEM(9, "Nevermind.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1001);
+					AddGossipItemFor(player, 1, "Welcome to Grumbo'z Guild Warz.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1010);
+					AddGossipItemFor(player, 9, "Nevermind.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1001);
 
-					player->SEND_GOSSIP_MENU(1, creature->GetGUID());
+					SendGossipMenuFor(player, 1, creature->GetGUID());
 				break;
 
 				case GOSSIP_ACTION_INFO_DEF + 1004:
-					player->PlayerTalkClass->ClearMenus();
+					ClearGossipMenuFor(player);
 				
-					player->ADD_GOSSIP_ITEM(1, "Welcome to Grumbo'z Guild Warz.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1010);
-					player->ADD_GOSSIP_ITEM(9, "Nevermind.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1001);
+					AddGossipItemFor(player, 1, "Welcome to Grumbo'z Guild Warz.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1010);
+					AddGossipItemFor(player, 9, "Nevermind.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1001);
 
-					player->SEND_GOSSIP_MENU(1, creature->GetGUID());
+					SendGossipMenuFor(player, 1, creature->GetGUID());
 					break;
 
 				case GOSSIP_ACTION_INFO_DEF + 1005:
 					player->PlayerTalkClass->ClearMenus();
 
-					player->ADD_GOSSIP_ITEM(1, "Welcome to Grumbo'z Guild Warz.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1010);
-					player->ADD_GOSSIP_ITEM(9, "Nevermind.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1001);
+					AddGossipItemFor(player, 1, "Welcome to Grumbo'z Guild Warz.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1010);
+					AddGossipItemFor(player, 9, "Nevermind.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1001);
 
-					player->SEND_GOSSIP_MENU(1, creature->GetGUID());
+					SendGossipMenuFor(player, 1, creature->GetGUID());
 				break;
 			break;
 			}
@@ -5010,12 +5079,45 @@ public: GGW_GUILD_INFO_STATION() : CreatureScript("GGW_GUILD_INFO_STATION"){ }
 		}
 };
 
+class GGW_GUILD_LEADER_QUEST_ENGINE : public CreatureScript
+{
+	public: GGW_GUILD_LEADER_QUEST_ENGINE() : CreatureScript("GGW_GUILD_LEADER_QUEST_ENGINE") { }
+		
+		bool OnQuestReward(Player* player, Creature* creature, Quest const* quest, uint32 opt)
+		{
+			if (quest->GetQuestId() == 52000 || 52001)
+			{
+				uint32 PLAYER_GUILD_ID = player->GetGuildId();
+
+				UpdateGuildCommandData("allowed", ConvertNumberToString(1), PLAYER_GUILD_ID);
+
+				ChatHandler(player->GetSession()).PSendSysMessage("<%sGrumbo|r>:%sYour Guild can now aquire/develop/buy or sell any lands they may come to control during there travels.", GWCOMM[PLAYER_GUILD_ID].color_6.c_str(), GWCOMM[PLAYER_GUILD_ID].color_10.c_str());
+
+				player->AddItem(GWCOMM[SERVER_GUILD_ID].currency, GWCOMM[SERVER_GUILD_ID].gift_count);
+
+				ChatHandler(player->GetSession()).PSendSysMessage("<%s%s|r>:%sHere is %u %s's to get your Guild Plot started.", GWCOMM[PLAYER_GUILD_ID].color_6.c_str(), creature->GetName(), GWCOMM[PLAYER_GUILD_ID].color_10.c_str(), GWCOMM[SERVER_GUILD_ID].gift_count, Currencyname.c_str());
+				ChatHandler(player->GetSession()).PSendSysMessage("<%s%s|r>:%sNow Leave and seek out lands in the name of %s!The Horde!.", GWCOMM[PLAYER_GUILD_ID].color_6.c_str(), creature->GetName(), GWCOMM[PLAYER_GUILD_ID].color_10.c_str(), GWCOMM[PLAYER_GUILD_ID].color_15.c_str());
+
+				return true;
+			}
+		};
+
+	struct Guild_Leader_QuestEngine : public ScriptedAI
+	{
+		Guild_Leader_QuestEngine(Creature* creature) : ScriptedAI(creature) { }
+	};
+
+	CreatureAI* GetAI(Creature* creature)const override
+	{
+		return new Guild_Leader_QuestEngine(creature);
+	}
+};
+
 void AddSC_Grumboz_Guild_Warz()
 {
 	new GGW_RankTimer;
     new GGW_LoadGWtable;
-	new GGW_GuildCreate;
-	new GGW_GuildDelete;
+	new GGW_GuildEngine;
 	new GGW_GuildPlayerOnLogin;
 	new GGW_commands;
 	new GGW_GUILD_FLAG;
@@ -5029,4 +5131,5 @@ void AddSC_Grumboz_Guild_Warz()
 	new GGW_GUILD_VENDOR3;
 	new GGW_GUILD_CANNON;
 	new GGW_GUILD_INFO_STATION;
-};
+	new GGW_GUILD_LEADER_QUEST_ENGINE;
+}
