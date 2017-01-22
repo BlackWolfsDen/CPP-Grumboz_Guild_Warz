@@ -4,7 +4,6 @@
 Support for:
 
 * TDB 335.60
-* TDB 335.62 
  
  
  Select the proper branch for your rev when cloning. don't clone this branch , it is out dated and for display only.
