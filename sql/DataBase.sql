@@ -109,7 +109,7 @@ REPLACE INTO `commands` (`guild`, `guild_id`, `team`, `commands`, `info_loc`, `l
 	('SERVER', 0, 2, 'commands', 'info', 'list', 'gtele', 'ver', 0, 0, 'flag', 'loc', 'table', 5, 3, 62006, 100000, 1800000, 25, 0, 'SERVER', 'set', 1, 1, 10000, 0, 'area', 10, 187432, 'farm', 5, 3, 500000, 'barrack', 10, 1, 500002, 'hall', 100, 1, 500004, 'pig', 1, 5, 49000, 'guard', 1, 10, 49002, 'vendor1', 25, 1, 49004, 'vendor2', 25, 1, 49006, 'vendor3', 25, 1, 49008, 'cannon', 100, 3, 49010, 'vault', 100, 3, 500006, 'mailbox', 10, 3, 500008, '|cff00cc00', '|cffFFFF00', '|cffFFFFFF', '|cff3399FF', '|cffBA0000', '|cffFFFF00', '|cffFF0000', '|cffC0C0C0', '|cff000000', '|cff00cc00', '|cffFFFF00', '|cffFF0000', '|cffFFFFFF', '|cff00cc00', '|cffFF0000');
 
 
-DROP TABLE IF EXIST `help`;
+DROP TABLE IF EXISTS `help`;
 
 CREATE TABLE IF NOT EXISTS `help` (
   `entry` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,
@@ -230,7 +230,7 @@ INSERT INTO `help` (`entry`, `name`, `description`, `example`, `command_level`) 
 	(104, 'allowed', 'System adjustable setting for allowed/not alllowed to develop areas via quest.', 'LOCKED', '7');
 	
 
-DROP TABLE IF EXIST `ranking`;
+DROP TABLE IF EXISTS `ranking`;
 CREATE TABLE IF NOT EXISTS `ranking` (
   `guild_id` mediumint(8) unsigned NOT NULL,
   `team` mediumint(8) unsigned NOT NULL DEFAULT '0',
@@ -239,7 +239,7 @@ CREATE TABLE IF NOT EXISTS `ranking` (
   UNIQUE KEY `guild_id` (`guild_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-DROP TABLE IF EXIST `zones`;
+DROP TABLE IF EXISTS `zones`;
 CREATE TABLE IF NOT EXISTS `zones` (
   `entry` mediumint(8) unsigned NOT NULL DEFAULT '0',
   `map_id` mediumint(8) unsigned NOT NULL DEFAULT '0',
