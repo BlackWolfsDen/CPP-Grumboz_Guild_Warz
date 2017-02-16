@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS `commands` (
   `table` varchar(50) NOT NULL DEFAULT 'table' COMMENT 'GM command reloads GW table.',
   `GM_admin` tinyint(3) unsigned NOT NULL DEFAULT '4' COMMENT 'GM rank of server admin',
   `GM_minimum` tinyint(1) unsigned NOT NULL DEFAULT '3' COMMENT 'Minimum Required Gm security level to use GM level commands.',
-  `currency` mediumint(8) unsigned NOT NULL DEFAULT '62006' COMMENT 'item id for currency used.',
+  `currency` bigint(20) unsigned NOT NULL DEFAULT '62006' COMMENT 'item id for currency used.',
   `pig_payz` bigint(20) unsigned NOT NULL DEFAULT '100000' COMMENT 'amount in copper that each pig payz. hence "pig payz". default 100000 = 10g ',
   `pig_payz_timer` bigint(20) unsigned NOT NULL DEFAULT '1800000' COMMENT 'timer for pig payz. default  1800000 = 30 minutes.',
   `gift_count` smallint(5) unsigned NOT NULL DEFAULT '25' COMMENT 'how many of currency item to give to guildmaster of newly created guild.',
