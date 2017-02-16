@@ -4172,8 +4172,8 @@ public:
 			{
 				case 1:
 				{
-					/* SQLTransaction trans(nullptr); */
-					guild->AddMember(/*trans,*/ player->GetGUID(), MAX_GUILD_RANKS);
+					SQLTransaction trans(nullptr);
+					guild->AddMember(trans, player->GetGUID(), MAX_GUILD_RANKS);
 
 					std::string ann = GWCOMM[guild_id].color_1 + player->GetName() + " Has Joined the Guild via the 'Guild Warz Guild Invite System'.";
 
