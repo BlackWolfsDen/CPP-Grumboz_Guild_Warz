@@ -159,22 +159,24 @@ struct GGW_CreatureData
 	Map* map;
 };
 
-class GuildWarz
+class GGW
 {
 private:
-		GuildWarz();
-		~GuildWarz();
+		GGW();
+		~GGW();
 
 public:
-//	creatorz
-	static uint32 CreateGuildLocation(uint32 map_id, uint32 area_id, uint32 zone_id, float pX, float pY, float pZ);
-	static uint32 CreateGuildCommands(std::string guild_name, uint32 guild_id);
-	static uint32 SpawnGuildObjects(uint8 type, uint32 flat_id, uint32 team_id, uint32 guild_id, Map *map, float x, float y, float z, float o, Player *player, uint32 LocId);
+	static GGW* instance();
+
+	//	creatorz
+	uint32 CreateGuildLocation(uint32 map_id, uint32 area_id, uint32 zone_id, float pX, float pY, float pZ);
+	uint32 CreateGuildCommands(std::string guild_name, uint32 guild_id);
+	uint32 SpawnGuildObjects(uint8 type, uint32 flat_id, uint32 team_id, uint32 guild_id, Map *map, float x, float y, float z, float o, Player *player, uint32 LocId);
 
 // loaderz
-	static bool LoadCommands();
-	static bool LoadHelp();
-	static bool LoadLoc();
+	bool LoadCommands();
+	bool LoadHelp();
+	bool LoadLoc();
 
 //	getterz
 	static uint32 GetLocationID(uint32 map_id, uint32 area_id, uint32 zone_id);
@@ -190,8 +192,71 @@ public:
 	static void UpdateCreature(Creature* creature, uint32 base_id, uint32 LocId);
 
 // misc
+	static void SendGuildMessage(uint32 guild_id, std::string msg);
 	static void PigPayz(Player* player);
 	static void FactionReset(Player* player);
+	uint64 GGW_ConvertStringToNumber(std::string arg);
+	std::string ConvertNumberToString(uint64 numberX);
+	uint32 GetTotalPigs(uint32 guild_id);
+	uint32 CalculateTotalLocations(uint32 guild_id);
+	uint32 CalculateLocationValue(uint32 loc_id);
+	uint64 CalculateTotalLocationsValue(uint32 guild_id);
+	uint32 GetRank(uint32 guild_id);
+	bool UpdateRankEntry(uint32 guild_id, uint32 total_gross_worth, uint8 team);
+	static void BuildRankList();
+	bool CreateRankList();
+
+	// defining most Globals now
+	// hard stored  settings //
+	float core_version = 6.85f;
+	float table_version = 2.88f;
+	float pigpayz_version = 2.50f;
+	float tele_version = 1.50f;
+	float pvp_version = 4.88f;
+	float vendor_version = 1.55f;
+
+	float GW_version = ((table_version + core_version + pigpayz_version + tele_version + pvp_version + vendor_version) / 4);
+
+
+	uint8 MAX_GUILD_RANKS = 255;
+	uint8 SERVER_GUILD_TEAM_LOCKED_ID = 3;
+	uint8 SERVER_GUILD_TEAM = 2;
+	uint32 SERVER_GUILD_ID = 0;
+	uint64 Guard_Died_Drop_Reward = 20558; // wsg's not yet added
+										   
+	// pre-define global core tables
+	std::unordered_map<uint32, Commands>GWCOMM;
+	std::unordered_map<uint32, Help>GWHELP;
+	std::unordered_map<uint32, LocData>GWARZ;
+	std::unordered_map<uint32, GGW_CreatureData>GGW_Creature;
+	std::map<uint32, rank_info>GW_Ranks;
+	std::map<uint32, uint32>GW_RANKS;
+
+	// pre-defining other Global's for later
+	uint32 GUILDWARZ_PLAYER_CHECK_TIMER;
+	uint32 GUILDWARZ_PIGPAYZ_VALUE;
+	uint32 GUILDWARZ_PIGPAYZ_TIMER;
+	uint32 GUILDWARZ_RANK_TYPE;
+	uint32 GUILDWARZ_RANKING_TIMER;
+	uint32 GUILDWARZ_RANKING_MAX;
+
+	// ---------------------------------------------------- -
+	// built - in vendors operational switches and item tables
+	// ---------------------------------------------------- -
+	const std::string VENDOR1_BUFF_NAMES[10] = { "Armor + 10%", "Damage + (1 - 10)%", "Resistances + 25", "Agility + 10%", "Intelligence + 10%", "Spirit + 10%", "Strength + 10%", "Stamina + 10%", "Spell Additional Damage + 3% chance", "Heal Me" };
+	uint32 VENDOR1_BUFF_IDS[10] = { 23767, 23768, 23769, 23736, 23766, 23738, 23735, 23737, 30557, 25840 };
+	// uint32 VENDOR2_ITEMS[11] = { 7734, 6948, 49912, 34498, 46693, 34499, 35557, 37431, 17202, 21038, 46783 }; // fun items
+	// uint32 VENDOR3_ITEMS[11] = {32837, 32838, 22736, 19019, 51858, 24550, 2000, 50730, 50070, 34196, 30906}; // misc gear
+
+	bool vendor1 = true; // use built - in vendor 1 . false / true = no / yes.
+	bool vendor2 = true; // use built - in vendor 2 . false / true = no / yes.
+	bool vendor3 = true; // use built - in vendor 3 . false / true = no / yes.
+
+	uint32 Currencyid;
+	std::string Currencyname;
+
+private:
 };
 
+#define sGGW GGW::instance()
 #endif // GRUMBOZ_GUILD_WARZ_H_INCLUDED
