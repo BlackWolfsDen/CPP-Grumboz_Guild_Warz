@@ -10,6 +10,6 @@ Support for:
  Select the proper branch for your rev when cloning. don't clone this branch , it is out dated and for display only.
  
  
-Original public release thread -> http://emudevs.com/showthread.php/5436-CPP-Grumbo-z-Guild-Warz-The-Rise-of-the-Guild
+Original public release thread -> http://blackwolfsden.forumotion.com/t59-cpp-grumbo-z-guild-warz-rise-of-the-guild                                                         http://emudevs.com/showthread.php/5436-CPP-Grumbo-z-Guild-Warz-The-Rise-of-the-Guild
 
 The WiKi -> https://github.com/BlackWolfsDen/Eluna-Grumboz-Guild-Warz/wiki
