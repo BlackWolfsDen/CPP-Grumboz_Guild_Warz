@@ -13,9 +13,9 @@ REPLACE INTO `creature_template` (`entry`, `modelid1`, `name`, `subname`, `IconN
 (49008, 3527, 'Gear Vendor 3', 'Guild War\'z', 'Buy', 80, 80, 35, 128, 1, 1.14286, 1, 0, 1, 0, 0, 0, 0, 0, 0, '', 0, 1, 0, 'GGW_GUILD_VENDOR3'),
 (49009, 1321, 'Gear Vendor 3', 'Guild War\'z', 'Buy', 80, 80, 35, 128, 1, 1.14286, 1, 0, 1, 0, 0, 0, 0, 0, 0, '', 0, 1, 0, 'GGW_GUILD_VENDOR3');
 
-REPLACE INTO `creature_template` (`entry`, `difficulty_entry_1`, `modelid1`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `baseattacktime`, `rangeattacktime`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `InhabitType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`) VALUES 
-(49010,32795,27101, 'Anti-personnel Cannon', '', 'vehichleCursor',0,80,80,84,16777216,1,1,1,1,0,2000,0,1,32772,2048,8,0,9,262176,160,0,0, 'NullAI',0,3,1,8.64198,1,1,134343,0,1,344276858, 2, 'GGW_GUILD_CANNON'),
-(49011,32795,27101, 'Anti-personnel Cannon', '', 'vehichleCursor',0,80,80,83,16777216,1,1,1,1,0,2000,0,1,32772,2048,8,0,9,262176,160,0,0, 'NullAI',0,3,1,8.64198,1,1,134343,0,1,344276858, 2, 'GGW_GUILD_CANNON');
+REPLACE INTO `creature_template` (`entry`, `difficulty_entry_1`, `modelid1`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `baseattacktime`, `rangeattacktime`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`) VALUES 
+(49010,32795,27101, 'Anti-personnel Cannon', '', 'vehichleCursor',0,80,80,84,16777216,1,1,1,1,0,2000,0,1,32772,2048,8,0,9,262176,160,0,0, 'NullAI',0,1,8.64198,1,1,134343,0,1,344276858, 2, 'GGW_GUILD_CANNON'),
+(49011,32795,27101, 'Anti-personnel Cannon', '', 'vehichleCursor',0,80,80,83,16777216,1,1,1,1,0,2000,0,1,32772,2048,8,0,9,262176,160,0,0, 'NullAI',0,1,8.64198,1,1,134343,0,1,344276858, 2, 'GGW_GUILD_CANNON');
 
 REPLACE INTO `creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES 
 (49010, 0, 49872, 12340),
