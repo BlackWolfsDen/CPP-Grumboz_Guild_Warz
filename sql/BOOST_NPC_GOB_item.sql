@@ -1,73 +1,57 @@
--- these are created from an Ace based Core. so you may need to change some of the column names.
--- i slimmed them down to just the required data but you still may need to change column names.
+-- // these are created from an Ace based Core. so you may need to change some of the column names.
+-- // i slimmed them down to just the required data but you still may need to change column names.
 
-REPLACE INTO `creature_template` (`entry`, `modelid1`, `name`, `subname`, `IconName`, `minlevel`, `maxlevel`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`,  `unit_flags`, `family`, `type`, `AIName`, `MovementType`, `InhabitType`, `HoverHeight`, `ScriptName`) VALUES 
-(49000, 193, 'Guild War\'z Pig', 'Alliance', NULL, 80, 80, 84, 0, 1, 1.14286, 1, 0, 131078, 0, 0, 0, '', 0, 1, 'GGW_GUILD_PIG'),
-(49001, 744, 'Guild War\'z Pig', 'Horde', NULL, 80, 80, 83, 0, 1, 1.14286, 1, 0, 131078, 0, 0, 0, '', 0, 1, 'GGW_GUILD_PIG'),
-(49002, 26725, 'Guild War\'z Guard', 'Alliance', 'Attack', 80, 80, 84, 524288, 1.5, 2.5, 1, 4,  1, 520, 17, 7, 'AggressorAI', 1, 1, 'GGW_GUILD_GUARD'),
-(49003, 26725, 'Guild War\'z Guard', 'Horde', 'Attack', 80, 80, 83, 524288, 1.5, 2.5, 1, 4,  1, 520, 17, 7, 'AggressorAI', 1, 1, 'GGW_GUILD_GUARD'),
-(49004, 18239, 'Buff Vendor 1', 'Guild War\'z', 'Buy', 80, 80, 84, 129, 1, 1.14286, 1, 0, 131078, 0, 0, 0, '', 0, 1, 'GGW_GUILD_VENDOR1'),
-(49005, 1322, 'Buff Vendor 1', 'Guild War\'z', 'Buy', 80, 80, 83, 129, 1, 1.14286, 1, 0, 131078, 0, 0, 0, '', 0, 1, 'GGW_GUILD_VENDOR1'),
-(49006, 10722, 'Fun Vendor 2', 'Guild War\'z', 'Buy', 80, 80, 84, 128, 1, 1.14286, 1, 0, 0, 0, 0, 0, '', 0, 1, 'GGW_GUILD_VENDOR2'),
-(49007, 3608, 'Fun Vendor 2', 'Guild War\'z', 'Buy', 80, 80, 83, 128, 1, 1.14286, 1, 0, 0, 0, 0, 0, '', 0, 1, 'GGW_GUILD_VENDOR2'),
-(49008, 3527, 'Gear Vendor 3', 'Guild War\'z', 'Buy', 80, 80, 84, 128, 1, 1.14286, 1, 0, 0, 0, 0, 0, '', 0, 1, 'GGW_GUILD_VENDOR3'),
-(49009, 1321, 'Gear Vendor 3', 'Guild War\'z', 'Buy', 80, 80, 83, 128, 1, 1.14286, 1, 0, 0, 0, 0, 0, '', 0, 1, 'GGW_GUILD_VENDOR3');
+REPLACE INTO `creature_template` (`entry`, `modelid1`, `name`, `subname`, `IconName`, `minlevel`, `maxlevel`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `baseattacktime`, `rangeattacktime`, `unit_class`, `unit_flags`, `family`, `type`, `AIName`, `DamageModifier`, `RegenHealth`, `flags_extra`, `ScriptName`) VALUES 
+(49000, 193, 'Guild War\'z Pig', 'Alliance', NULL, 85, 85, 35, 0, 1, 1.14286, 1, 0, 1, 0, 0, 0, 0, 0, 0, '', 0, 1, 0, 'GGW_GUILD_PIG'),
+(49001, 744, 'Guild War\'z Pig', 'Horde', NULL, 85, 85, 35, 0, 1, 1.14286, 1, 0, 1, 0, 0, 0, 0, 0, 0, '', 0, 1, 0, 'GGW_GUILD_PIG'),
+(49002, 26725, 'Guild War\'z Guard', 'Alliance', 'NULL', 85, 85, 84, 524288, 1.5, 2.5, 1, 4, 4, 1200, 0, 1, 520, 17, 7, 'AggressorAI', 154355, 1, 33024, 'GGW_GUILD_GUARD'),
+(49003, 26725, 'Guild War\'z Guard', 'Horde', 'NULL', 85, 85, 83, 524288, 1.5, 2.5, 1, 4, 4, 1200, 0, 1, 520, 17, 7, 'AggressorAI', 154355, 1, 33024, 'GGW_GUILD_GUARD'),
+(49004, 18239, 'Buff Vendor 1', 'Guild War\'z', 'Buy', 80, 80, 35, 129, 1, 1.14286, 1, 0, 1, 0, 0, 0, 0, 0, 0, '', 0, 1, 0, 'GGW_GUILD_VENDOR1'),
+(49005, 1322, 'Buff Vendor 1', 'Guild War\'z', 'Buy', 80, 80, 35, 129, 1, 1.14286, 1, 0, 1, 0, 0, 0, 0, 0, 0, '', 0, 1, 0, 'GGW_GUILD_VENDOR1'),
+(49006, 10722, 'Fun Vendor 2', 'Guild War\'z', 'Buy', 80, 80, 35, 128, 1, 1.14286, 1, 0, 1, 0, 0, 0, 0, 0, 0, '', 0, 1, 0, 'GGW_GUILD_VENDOR2'),
+(49007, 3608, 'Fun Vendor 2', 'Guild War\'z', 'Buy', 80, 80, 35, 128, 1, 1.14286, 1, 0, 1, 0, 0, 0, 0, 0, 0, '', 0, 1, 0, 'GGW_GUILD_VENDOR2'),
+(49008, 3527, 'Gear Vendor 3', 'Guild War\'z', 'Buy', 80, 80, 35, 128, 1, 1.14286, 1, 0, 1, 0, 0, 0, 0, 0, 0, '', 0, 1, 0, 'GGW_GUILD_VENDOR3'),
+(49009, 1321, 'Gear Vendor 3', 'Guild War\'z', 'Buy', 80, 80, 35, 128, 1, 1.14286, 1, 0, 1, 0, 0, 0, 0, 0, 0, '', 0, 1, 0, 'GGW_GUILD_VENDOR3');
 
-REPLACE INTO `creature_template` (`entry`, `modelid1`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `trainer_class`, `type`, `type_flags`, `mingold`, `maxgold`, `AIName`, `MovementType`, `InhabitType`, `movementId`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`, `VerifiedBuild`) VALUES 
-(49012, 18239, 'Guild Warz', 'Information', 'Speak', 1000, 60, 60, 84, 3, 1, 1.14286, 1, 1, 1, 32768, 2048, 8, 0, 7, 0, 0, 0, '', 0, 3, 0, 0, 2, 'GGW_GUILD_INFO_STATION', 12340),
-(49013, 1322, 'Guild Warz', 'Information', 'Speak', 1000, 60, 60, 83, 3, 1, 1.14286, 1, 1, 1, 32768, 2048, 8, 0, 7, 0, 0, 0, '', 0, 3, 0, 0, 2, 'GGW_GUILD_INFO_STATION', 12340);
+REPLACE INTO `creature_template` (`entry`, `difficulty_entry_1`, `modelid1`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `dmgschool`, `baseattacktime`, `rangeattacktime`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `VehicleId`, `mingold`, `maxgold`, `AIName`, `MovementType`, `InhabitType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `movementId`, `RegenHealth`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`) VALUES 
+(49010,32795,27101, 'Anti-personnel Cannon', '', 'vehichleCursor',0,80,80,84,16777216,1,1,1,1,0,2000,0,1,32772,2048,8,0,9,262176,160,0,0, 'NullAI',0,3,1,8.64198,1,1,134343,0,1,344276858, 2, 'GGW_GUILD_CANNON'),
+(49011,32795,27101, 'Anti-personnel Cannon', '', 'vehichleCursor',0,80,80,83,16777216,1,1,1,1,0,2000,0,1,32772,2048,8,0,9,262176,160,0,0, 'NullAI',0,3,1,8.64198,1,1,134343,0,1,344276858, 2, 'GGW_GUILD_CANNON');
 
-REPLACE INTO `creature_template` (`entry`, `modelid1`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `unit_class`, `unit_flags`, `unit_flags2`, `dynamicflags`, `family`, `type`, `type_flags`, `spell1`, `VehicleId`, `AIName`, `MovementType`, `InhabitType`, `HoverHeight`, `RacialLeader`, `mechanic_immune_mask`, `flags_extra`, `ScriptName`) VALUES 
-(49010, 27101, 'Anti-personnel Cannon', 'Alliance', 'vehichleCursor', 0, 80, 80, 84, 16777216, 1, 1, 1, 1, 1, 32772, 2048, 8, 0, 9, 262176, 49872, 160, 'NullAI', 0, 3, 1, 0, 344276858, 2, 'GGW_GUILD_CANNON'),
-(49011, 27101, 'Anti-personnel Cannon', 'Horde', 'vehichleCursor', 0, 80, 80, 83, 16777216, 1, 1, 1, 1, 1, 32772, 2048, 8, 0, 9, 262176, 49872, 160, 'NullAI', 0, 3, 1, 0, 344276858, 2, 'GGW_GUILD_CANNON');
+REPLACE INTO `creature_template_spell` (`CreatureID`, `Index`, `Spell`, `VerifiedBuild`) VALUES 
+(49010, 0, 49872, 12340),
+(49011, 0, 49872, 12340);
 
 REPLACE INTO `npc_spellclick_spells` (`npc_entry`, `spell_id`, `cast_flags`, `user_type`) VALUES 
 (49010, 60682, 1, 0),
 (49011, 60682, 1, 0);
 
-REPLACE INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`, `size`, `data0`, `data1`, `data2`, `data3`, `data4`, `AIName`, `ScriptName`) VALUES 
-(500000, 10, 8060, 'Alliance Guild farm', 'Interact', '', '', 0.6, 0, 0, 0, 1, 0, '', ''),
-(500001, 10, 8060, 'Horde Guild farm', 'Interact', '', '', 0.6, 0, 0, 0, 1, 0, '', ''),
-(500002, 10, 8057, 'Alliance Guild Barracks', 'Interact', '', '', 0.3, 0, 0, 0, 1, 0, '', ''),
-(500003, 10, 8057, 'Horde Guild Barracks', 'Interact', '', '', 0.3, 0, 0, 0, 1, 0, '', '');
+REPLACE INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconName`, `size`, `Data0`, `Data1`, `Data2`, `Data3`, `Data4`, `Data5`, `Data6`, `Data7`, `Data8`, `Data9`, `Data10`, `Data11`, `Data12`, `Data13`, `Data14`, `Data15`, `Data16`, `Data17`, `Data18`, `Data19`, `Data20`, `Data21`, `Data22`, `Data23`, `ScriptName`) VALUES 
+(187432, 10, 5651, 'Alliance Guild Flag', 'interact', 4, 0, 0, 0, 3000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'GGW_GUILD_FLAG'),
+(187433, 10, 5652, 'Horde Guild Flag', 'interact', 4, 0, 0, 0, 3000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'GGW_GUILD_FLAG'),
+(500000, 10, 8060, 'Alliance Guild farm', 'Interact', 0.6, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ''),
+(500001, 10, 8060, 'Horde Guild farm', 'Interact', 0.6, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ''),
+(500002, 10, 8057, 'Alliance Guild Barracks', 'Interact', 0.3, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ''),
+(500003, 10, 8057, 'Horde Guild Barracks', 'Interact', 0.3, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ''),
+(500004, 33, 7900, 'Tiff\'s Guild Hall', 'Interact', 0.3, 5000, 35074, 0, 19669, 1, 25000, 1, 1, 0, 19672, 1, 1, 0, 0, 19675, 0, 0, 0, 39, 0, 0, 0, 19678, 0, ''),
+(500005, 33, 7878, 'Grumbo\'z Guild Hall', 'Interact', 0.3, 5000, 35074, 0, 19669, 1, 25000, 1, 1, 0, 19672, 1, 1, 0, 0, 19675, 0, 0, 0, 39, 0, 0, 0, 19678, 0, ''),
+(500006, 34, 7613, 'Alliance Guild Vault', '', 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'GGW_GUILD_VAULT'),
+(500007, 34, 7613, 'Horde Guild Vault', '', 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'GGW_GUILD_VAULT'),
+(500008, 19, 7605, 'Alliance Guild Mailbox', '', 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'GGW_GUILD_MAILBOX'),
+(500009, 19, 7605, 'Horde Guild Mailbox', '', 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'GGW_GUILD_MAILBOX');
 
 REPLACE INTO `gameobject_template_addon` (`entry`, `faction`, `flags`, `mingold`, `maxgold`) VALUES 
+(187431, 35, 0, 0, 0),
+(187432, 35, 0, 0, 0),
 (500000, 84, 6553632, 0, 0),
 (500001, 83, 6553632, 0, 0),
 (500002, 84, 6553632, 0, 0),
-(500003, 83, 6553632, 0, 0);
-
-REPLACE INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`, `size`, `data0`, `data1`, `data2`, `data3`, `data4`, `data5`, `data6`, `data7`, `data8`, `data9`, `data10`, `data11`, `data14`, `data18`, `data22`, `AIName`, `ScriptName`) VALUES 
-(500004, 33, 7900, 'Tiff\'s Guild Hall', 'Interact', '', '', 0.3, 5000, 35074, 0, 19669, 1, 25000, 1, 1, 0, 19672, 1, 1, 19675, 39, 19678, '', ''),
-(500005, 33, 7878, 'Grumbo\'z Guild Hall', 'Interact', '', '', 0.3, 5000, 35074, 0, 19669, 1, 25000, 1, 1, 0, 19672, 1, 1, 19675, 39, 19678, '', '');
-
-REPLACE INTO `gameobject_template_addon` (`entry`, `faction`, `flags`, `mingold`, `maxgold`) VALUES 
+(500003, 83, 6553632, 0, 0),
 (500004, 84, 6553632, 0, 0),
-(500005, 83, 6553632, 0, 0);
-
-REPLACE INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`, `size`, `AIName`, `ScriptName`) VALUES 
-(500006,34,7613, 'Alliance Guild Vault', '', '', '', 1, '', 'GGW_GUILD_VAULT'),
-(500007,34,7613, 'Horde Guild Vault', '', '', '', 1, '', 'GGW_GUILD_VAULT');
-
-REPLACE INTO `gameobject_template_addon` (`entry`, `faction`, `flags`, `mingold`, `maxgold`) VALUES 
+(500005, 83, 6553632, 0, 0),
 (500006, 84, 0, 0, 0),
-(500007, 83, 0, 0, 0);
-
-REPLACE INTO `gameobject_template` (`entry`,	`type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`, `size`, `AIName`, `ScriptName`) VALUES 
-(500008,19,7605,'Alliance Guild Mailbox','','','',1,'','GGW_GUILD_MAILBOX'),
-(500009,19,7605,'Horde Guild Mailbox','','','',1,'','GGW_GUILD_MAILBOX');
-
-REPLACE INTO `gameobject_template_addon` (`entry`, `faction`, `flags`, `mingold`, `maxgold`) VALUES 
+(500007, 83, 0, 0, 0),
 (500008, 84, 0, 0, 0),
 (500009, 83, 0, 0, 0);
-
-REPLACE INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`, `size`, `data0`, `data1`, `data2`, `data3`, `data4`, `AIName`, `ScriptName`) VALUES 
-(500010, 10, 5651, 'Alliance Guild Flag', 'Interact', '', '', 4, 0, 0, 0, 3000, 0, '', 'GGW_GUILD_FLAG'),
-(500011, 10, 5652, 'Horde Guild Flag', 'Interact', '', '', 4, 0, 0, 0, 3000, 0, '', 'GGW_GUILD_FLAG');
--- 6834
-REPLACE INTO `gameobject_template_addon` (`entry`, `faction`, `flags`, `mingold`, `maxgold`) VALUES 
-(500010, 35, 0, 0, 0),
-(500011, 35, 0, 0, 0);
 
 REPLACE INTO `item_template` (`entry`, `class`, `subclass`, `SoundOverrideSubclass`, `name`, `displayid`, `Quality`, `Flags`, `FlagsExtra`, `BuyCount`, `BuyPrice`, `SellPrice`, `InventoryType`, `AllowableClass`, `AllowableRace`, `maxcount`, `stackable`, `bonding`, `description`, `RequiredDisenchantSkill`, `ScriptName`) VALUES 
 (62006, 0, 8, -1, 'Guild Coin', 34104, 4, 0, 0, 1, 500000000, 500000000, 0, -1, -1, 2147483647, 2147483647, 0, 'Grumbo\'z Guild Warz', -1, '');
@@ -131,9 +115,9 @@ REPLACE INTO `quest_offer_reward` (`ID`, `Emote1`, `Emote2`, `Emote3`, `Emote4`,
 (52000, 0, 0, 0, 0, 0, 0, 0, 0, 'I have called you befor me to discuss some issues our Kingdom is facing... Due to thinned ranks and personel, we cannot protect our lands ... at ALL. I need you and your Guild to go out explore and claim any land your Guild is capable of siezing. I will give ownership and permits for developement. If your Guild becomes weak and cannot hold its lands .. Well maybe a stronger Guild should challange your Guild for them with battle. !Now go forth and claim lands in the name of the Alliance!', 12340),
 (52001, 0, 0, 0, 0, 0, 0, 0, 0, 'I have called you befor me to discuss some issues We, the Horde, are facing. Due to thinned ranks and personel, we cannot protect our lands ... at ALL. I need you and your Guild to go out explore and claim any land your Guild is capable of siezing. I will give ownership and permits for developement. If your Guild becomes weak and cannot hold its lands .. Well maybe a stronger Guild should take some from your Guild with force!. !Now go forth and claim lands in the name of the Horde!', 12340);
 
-REPLACE INTO `creature_template` (`entry`, `modelid1`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `type`, `type_flags`, `spell1`, `spell2`, `mingold`, `maxgold`, `AIName`, `InhabitType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `RegenHealth`, `mechanic_immune_mask`, `ScriptName`, `VerifiedBuild`) VALUES 
-(49014, 28127, 'King Varian Wrynn', 'King of Stormwind', '', 0, 83, 83, 2, 1733, 3, 1, 1.42857, 1, 3, 2000, 2000, 1, 1, 1, 0, 2048, 7, 76, 59688, 41056, 700000, 750000, '', 3, 1, 400, 20, 1, 35, 1, 1, 1, 619397119, 'GGW_GUILD_LEADER_QUEST_ENGINE', 12340),
-(49015, 4527, 'Thrall', 'Warchief', 'Speak', 0, 83, 83, 2, 1734, 3, 1, 1.14286, 1, 3, 2000, 2000, 1, 1, 2, 64, 2048, 7, 12, 59716, 59717, 700000, 750000, '', 3, 1, 400, 30, 1, 35, 1, 1, 1, 619397119, 'GGW_GUILD_LEADER_QUEST_ENGINE', 12340);
+REPLACE INTO `creature_template` (`entry`, `modelid1`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`, `faction`, `npcflag`, `speed_walk`, `speed_run`, `scale`, `rank`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`, `unit_class`, `unit_flags`, `unit_flags2`, `type`, `type_flags`, `mingold`, `maxgold`, `AIName`, `InhabitType`, `HoverHeight`, `HealthModifier`, `ManaModifier`, `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `RacialLeader`, `RegenHealth`, `mechanic_immune_mask`, `ScriptName`, `VerifiedBuild`) VALUES 
+(49014, 28127, 'King Varian Wrynn', 'King of Stormwind', '', 0, 83, 83, 2, 1733, 3, 1, 1.42857, 1, 3, 2000, 2000, 1, 1, 1, 0, 2048, 7, 76, 700000, 750000, '', 3, 1, 400, 20, 1, 35, 1, 1, 1, 619397119, 'GGW_GUILD_LEADER_QUEST_ENGINE', 12340),
+(49015, 4527, 'Thrall', 'Warchief', 'Speak', 0, 83, 83, 2, 1734, 3, 1, 1.14286, 1, 3, 2000, 2000, 1, 1, 2, 64, 2048, 7, 12, 700000, 750000, '', 3, 1, 400, 30, 1, 35, 1, 1, 1, 619397119, 'GGW_GUILD_LEADER_QUEST_ENGINE', 12340);
 
 REPLACE INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `spawndist`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `dynamicflags`, `VerifiedBuild`) VALUES 
 (1000000, 49014, 0, 1519, 1519, 1, 1, 28127, 0, -8521.7539, 434.0248, 106.0520, 2.248629, 0, 5, 0, 8, 0, 0, 0, 0, 0, 0),
